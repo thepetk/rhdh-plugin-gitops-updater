@@ -13,7 +13,7 @@ echo "Dynamic plugins path: $DYNAMIC_PLUGINS_PATH"
 echo "PR mode: $PR_MODE"
 echo "Max PRs: $MAX_PRS"
 
-uv run python hello.py \
+uv run python main.py \
   --dynamic-plugins-path "$DYNAMIC_PLUGINS_PATH" \
   --github-token "$GITHUB_TOKEN" \
   --plugin-filter "$PLUGIN_FILTER" \
