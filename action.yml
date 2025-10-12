@@ -1,0 +1,35 @@
+name: 'RHDH Plugin GitOps Updater'
+description: 'Monitors and updates dynamic plugins for Red Hat Developer Hub in GitOps repositories'
+branding:
+  icon: 'refresh-cw'
+  color: 'red'
+
+inputs:
+  dynamic-plugins-path:
+    description: 'Path to the dynamic-plugins.yaml file'
+    required: true
+  github-token:
+    description: 'GitHub token for API access and PR creation'
+    required: true
+  plugin-filter:
+    description: 'Optional JSON array of plugin names to monitor, e.g., ''["plugin1", "plugin2"]'' (if empty, monitors all plugins)'
+    required: false
+    default: '[]'
+  pr-mode:
+    description: 'PR creation mode: "separate" for individual PRs per plugin, "joint" for one PR with all updates'
+    required: false
+    default: 'separate'
+  max-prs:
+    description: 'Maximum number of PRs to create (only applies when pr-mode is "separate")'
+    required: false
+    default: '5'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.dynamic-plugins-path }}
+    - ${{ inputs.github-token }}
+    - ${{ inputs.plugin-filter }}
+    - ${{ inputs.pr-mode }}
+    - ${{ inputs.max-prs }}
