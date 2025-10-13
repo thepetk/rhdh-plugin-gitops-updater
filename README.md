@@ -208,7 +208,7 @@ export GITOPS_REPO="owner/repo"
 export DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH="charts/rhdh/values.yaml"
 export UPDATE_PR_STRATEGY="separate"
 
-python main.py
+uv run main.py
 ```
 
 ## Contributing
