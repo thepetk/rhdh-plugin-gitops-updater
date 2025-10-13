@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import logging
 import os
+import re
 import sys
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -9,6 +10,7 @@ from urllib.parse import quote, urlparse
 import requests
 import yaml
 from github import Auth, Github
+from github.Repository import Repository
 from packaging.version import Version
 from requests import Response
 
@@ -77,7 +79,7 @@ class RHDHPluginUpdaterConfig:
         "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/"
     )
     GH_PR_BRANCH_NAME_BASE = "update-{plugin_name}-{latest_version}"
-    GH_PR_TITLE_BASE = "Update {plugin_name} to version {latest_version}"
+    GH_PR_TITLE_BASE = "[rhdh-plugin-gitops-updater] Update `{plugin_name}` to version {latest_version}"
     GH_PR_BODY_BASE = """## Plugin Update
 
 **Plugin**: `{plugin_name}`
@@ -89,7 +91,9 @@ This PR updates the RHDH plugin to the latest version.
 🤖 Generated with [RHDH Plugin GitOps Updater](https://github.com/thepetk/rhdh-plugin-gitops-updater)
 """
     GH_BULK_PR_BRANCH_NAME_BASE = "update-rhdh-plugins-batch"
-    GH_BULK_PR_TITLE_BASE = "Update {plugin_updates_count} RHDH plugins"
+    GH_BULK_PR_TITLE_BASE = (
+        "[rhdh-plugin-gitops-updater] Update {plugin_updates_count} RHDH plugins"
+    )
     GH_BULK_PR_BODY_BASE = """## Batch Plugin Update
 
 This PR updates {plugin_updates_count} RHDH plugins to their latest versions:
@@ -150,8 +154,8 @@ def get_plugins_list_from_dict(
     current: "dict[str, Any]" = data
     for key in keys:
         if not isinstance(current, dict) or key not in current:
-            logger.warning("invalid config location, cannot find plugins list")
-            return []
+            logger.error("invalid config location, cannot find plugins list")
+            sys.exit(1)
 
         current = current[key]
 
@@ -286,6 +290,31 @@ class GithubAPIClient:
 
         return self._convert_to_rhdh_plugin_package(package_name, raw_versions)
 
+    def _branch_exists(self, repo: "Repository", branch_name: "str") -> "bool":
+        """
+        checks if a branch exists in the given repository
+        """
+        try:
+            repo.get_git_ref(f"heads/{branch_name}")
+            logger.debug(f"branch {branch_name} already exists")
+            return True
+        except Exception:
+            logger.debug(f"branch {branch_name} does not exist, will create it")
+            return False
+
+    def _handle_new_endline(self, original_content: "str", new_content: "str") -> "str":
+        """
+        handles the new_endline formating issue
+        """
+        original_ends_with_newline = original_content.endswith("\n")
+
+        if original_ends_with_newline and not new_content.endswith("\n"):
+            new_content += "\n"
+        elif not original_ends_with_newline and new_content.endswith("\n"):
+            new_content = new_content.rstrip("\n")
+
+        return new_content
+
     def create_pull_request(
         self,
         repo_full_name: "str",
@@ -306,20 +335,33 @@ class GithubAPIClient:
         base_ref = repo.get_git_ref(f"heads/{base_branch}")
         base_sha = base_ref.object.sha
 
-        try:
-            repo.create_git_ref(f"refs/heads/{branch_name}", base_sha)
-        except Exception as e:
-            # case branch already exists, try to update it
+        if self._branch_exists(repo, branch_name):
+            # skip for separate pr strategy
+            if UPDATE_PR_STRATEGY == GithubPullRequestStrategy.SEPARATE:
+                logger.debug(f"checking for existing open PR for branch {branch_name}")
+                raise GithubPRFailedException(f"Branch {branch_name} already exists")
+
+            # if branch exists, check if there's an open PR for it
             try:
-                logger.debug(f"branch {branch_name} already exists, updating it")
-                branch_ref = repo.get_git_ref(f"heads/{branch_name}")
-                if branch_ref:
-                    raise GithubPRFailedException(
-                        f"PR already exists for branch {branch_name}"
-                    )
-            except Exception:
+                pulls = repo.get_pulls(
+                    state="open",
+                    head=f"{repo.owner.login}:{branch_name}",
+                    base=base_branch,
+                )
+            except Exception as e:
+                logger.debug(f"no open PR found for branch {branch_name}: {e}")
+
+            for pr in pulls:
                 raise GithubPRFailedException(
-                    f"Failed to create or update branch {branch_name}: {e}"
+                    f"Open PR already exists for branch {branch_name}: {pr.html_url}"
+                )
+        else:
+            try:
+                repo.create_git_ref(f"refs/heads/{branch_name}", base_sha)
+                logger.debug(f"created branch {branch_name}")
+            except Exception as e:
+                raise GithubPRFailedException(
+                    f"Failed to create branch {branch_name}: {e}"
                 ) from e
 
         try:
@@ -328,7 +370,10 @@ class GithubAPIClient:
             repo.update_file(
                 path=file_path,
                 message=f"Update {file_path}",
-                content=new_content,
+                content=self._handle_new_endline(
+                    original_content=contents.decoded_content.decode("utf-8"),
+                    new_content=new_content,
+                ),
                 sha=contents.sha,
                 branch=branch_name,
             )
@@ -368,8 +413,8 @@ class RHDHPluginsConfigLoader:
         """
         fetches the plugins from the config file based on the config location
         """
-        keys = [key for key in data.keys()]
-        plugins_list = get_plugins_list_from_dict(keys, self.config_location)
+        keys = self.config_location.split(".")
+        plugins_list = get_plugins_list_from_dict(keys, data)
 
         return plugins_list if isinstance(plugins_list, list) else []
 
@@ -503,43 +548,44 @@ class RHDHPluginConfigUpdater:
         self.config_path = config_path
         self.config_location = config_location
 
-    def _update_plugin_version_in_data(
+    def _update_plugin_version_in_content(
         self,
-        data: "dict[str, str | bool]",
+        content: "str",
         plugin: "RHDHPlugin",
         new_version: "Version",
-    ) -> "dict[str, str | bool]":
+    ) -> "str":
         """
-        update a single plugin version in the plugins config.
+        update a single plugin version in the YAML content using string replacement.
+        This preserves the original YAML formatting.
         """
-
-        keys = self.config_location.split(".")
-        plugins_list = get_plugins_list_from_dict(keys, data)
         logger.debug(
             f"updating config for plugin {plugin.plugin_name} to version {new_version}"
         )
 
-        for plugin_entry in plugins_list:
-            package = plugin_entry.get("package", "")
-            if plugin.plugin_name not in package:
-                continue
+        old_tag = (
+            f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{plugin.current_version}"
+        )
+        new_tag = f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{new_version}"
 
-            parts = package.split(":")
-            if not len(parts) < 2:
-                raise InvalidRHDHPluginPackageDefinitionException(
-                    f"Cannot update definition for package: {package}"
-                )
+        # pattern to find the specific plugin's package line with the old version
+        pattern = re.compile(
+            rf"(package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:){re.escape(old_tag)}(![^\s]*)",
+            re.MULTILINE,
+        )
 
-            old_tag = parts[-1].split("!")[0]
-            new_tag = f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{new_version}"
-            package = package.replace(old_tag, new_tag)
-            plugin_entry["package"] = package
+        # Replace the old tag with the new tag
+        updated_content = pattern.sub(rf"\g<1>{new_tag}\g<2>", content)
+
+        if updated_content != content:
             logger.debug(
                 f"updated config for {plugin.plugin_name} from {plugin.current_version} to {new_version}"
             )
-            break
+        else:
+            logger.warning(
+                f"no match found for plugin {plugin.plugin_name} with version {plugin.current_version}"
+            )
 
-        return data
+        return updated_content
 
     def update_rhdh_plugin(
         self,
@@ -550,13 +596,13 @@ class RHDHPluginConfigUpdater:
         updates a single plugin and return the updated YAML content.
         """
         with open(self.config_path, "r") as f:
-            data = yaml.safe_load(f)
+            content = f.read()
 
-        updated_data = self._update_plugin_version_in_data(
-            data, rhdh_plugin, new_version
+        updated_content = self._update_plugin_version_in_content(
+            content, rhdh_plugin, new_version
         )
 
-        return yaml.dump(updated_data, default_flow_style=False, sort_keys=False)
+        return updated_content
 
     def bulk_update_rhdh_plugins(
         self,
@@ -566,14 +612,14 @@ class RHDHPluginConfigUpdater:
         updates multiple plugins and returns the updated YAML content.
         """
         with open(self.config_path, "r") as f:
-            data = yaml.safe_load(f)
+            content = f.read()
 
         for update in updates:
-            data = self._update_plugin_version_in_data(
-                data, update.rhdh_plugin, update.new_version
+            content = self._update_plugin_version_in_content(
+                content, update.rhdh_plugin, update.new_version
             )
 
-        return yaml.dump(data, default_flow_style=False, sort_keys=False)
+        return content
 
 
 def rhdh_plugin_needs_update(
