@@ -569,7 +569,7 @@ def main():
 
     print(f"Found {len(rhdh_plugins)} RHDH plugins to check for updates")
 
-    # List to cache all updates in case of joint strategy
+    # list to cache all updates in case of joint strategy
     plugin_updates: "list[RHDHPluginUpdate]" = []
     prs_created = 0
 
@@ -602,7 +602,6 @@ def main():
             )
             continue
 
-        # Separate PR strategy
         if PR_CREATION_LIMIT > 0 and prs_created >= PR_CREATION_LIMIT:
             print(
                 f"Info: Reached the PR creation limit of {PR_CREATION_LIMIT}, stopping..."
