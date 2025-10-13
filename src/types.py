@@ -1,0 +1,82 @@
+from dataclasses import dataclass
+
+from packaging.version import Version
+
+
+class GithubPullRequestStrategy:
+    SEPARATE = "separate"
+    JOINT = "joint"
+
+
+@dataclass
+class RHDHPluginPackageVersion:
+    name: "str"
+    version: "Version"
+    created_at: "str"
+
+
+@dataclass
+class RHDHPluginPackage:
+    """
+    Represents the RHDH plugin github package with its versions.
+    """
+
+    name: "str"
+    versions: "list[RHDHPluginPackageVersion]"
+
+
+@dataclass
+class RHDHPlugin:
+    """
+    Represents an RHDH plugin from the dynamic plugins configuration.
+    """
+
+    package_name: "str"
+    current_version: "Version"
+    plugin_name: "str"
+    disabled: "bool"
+
+
+@dataclass
+class RHDHPluginUpdate:
+    """
+    Represents an update for an RHDH plugin.
+    """
+
+    rhdh_plugin: "RHDHPlugin"
+    new_version: "Version"
+
+
+class RHDHPluginUpdaterConfig:
+    GH_ORG_NAME = "redhat-developer"
+    GH_REPO_NAME = "rhdh-plugin-export-overlays"
+    GH_PACKAGE_TAG_PREFIX = "next__"
+    GH_PACKAGES_BASE_URL = "https://api.github.com/orgs/{org}/packages"
+    GH_PACKAGES_VERSION_BASE_URL = "https://api.github.com/orgs/{org}/packages/{package_type}/{package_name}/versions"
+    GH_CR_REGISTRY_PREFIX = (
+        "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/"
+    )
+    GH_PR_BRANCH_NAME_BASE = "update-{plugin_name}-{latest_version}"
+    GH_PR_TITLE_BASE = (
+        "[rhdh-plugin-gitops-updater] Update `{plugin_name}` "
+        "to version {latest_version}"
+    )
+    GH_PR_BODY_BASE = """## Plugin Update
+
+**Plugin**: `{plugin_name}`
+**Current Version**: `{current_version}`
+**New Version**: `{latest_version}`
+
+This PR updates the RHDH plugin to the latest version.
+
+🤖 Generated with [RHDH Plugin GitOps Updater](https://github.com/thepetk/rhdh-plugin-gitops-updater)
+"""
+    GH_BULK_PR_BRANCH_NAME_BASE = "update-rhdh-plugins-batch"
+    GH_BULK_PR_TITLE_BASE = (
+        "[rhdh-plugin-gitops-updater] Update {plugin_updates_count} RHDH plugins"
+    )
+    GH_BULK_PR_BODY_BASE = """## Batch Plugin Update
+
+This PR updates {plugin_updates_count} RHDH plugins to their latest versions:
+
+"""
