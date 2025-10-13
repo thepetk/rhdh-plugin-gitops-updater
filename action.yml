@@ -5,31 +5,42 @@ branding:
   color: 'red'
 
 inputs:
-  dynamic-plugins-path:
-    description: 'Path to the dynamic-plugins.yaml file'
+  config-path:
+    description: 'Path to the dynamic plugins config YAML file (e.g., charts/rhdh/values.yaml)'
     required: true
+  config-location:
+    description: 'Location of the dynamic plugins config inside the YAML file (e.g., global.dynamic.plugins)'
+    required: false
+    default: 'global.dynamic.plugins'
   github-token:
     description: 'GitHub token for API access and PR creation'
     required: true
-  plugin-filter:
-    description: 'Optional JSON array of plugin names to monitor, e.g., ''["plugin1", "plugin2"]'' (if empty, monitors all plugins)'
+  gitops-base-branch:
+    description: 'Base branch for PRs in the GitOps repository'
     required: false
-    default: '[]'
-  pr-mode:
-    description: 'PR creation mode: "separate" for individual PRs per plugin, "joint" for one PR with all updates'
+    default: 'main'
+  update-pr-strategy:
+    description: 'PR creation strategy: "separate" for individual PRs per plugin, "joint" for one PR with all updates'
     required: false
     default: 'separate'
-  max-prs:
-    description: 'Maximum number of PRs to create (only applies when pr-mode is "separate")'
+  pr-creation-limit:
+    description: 'Maximum number of PRs to create (0 for unlimited, only applies when update-pr-strategy is "separate")'
     required: false
-    default: '5'
+    default: '0'
+  verbose:
+    description: 'Enable verbose logging (0 = normal, 1 = verbose/debug)'
+    required: false
+    default: '0'
 
 runs:
   using: 'docker'
   image: 'Dockerfile'
-  args:
-    - ${{ inputs.dynamic-plugins-path }}
-    - ${{ inputs.github-token }}
-    - ${{ inputs.plugin-filter }}
-    - ${{ inputs.pr-mode }}
-    - ${{ inputs.max-prs }}
+  env:
+    DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH: ${{ inputs.config-path }}
+    DYNAMIC_PLUGINS_CONFIG_YAML_LOCATION: ${{ inputs.config-location }}
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    GITOPS_REPO: ${{ github.repository }}
+    GITOPS_BASE_BRANCH: ${{ inputs.gitops-base-branch }}
+    UPDATE_PR_STRATEGY: ${{ inputs.update-pr-strategy }}
+    PR_CREATION_LIMIT: ${{ inputs.pr-creation-limit }}
+    VERBOSE: ${{ inputs.verbose }}
