@@ -313,7 +313,10 @@ class GithubAPIClient:
             try:
                 logger.debug(f"branch {branch_name} already exists, updating it")
                 branch_ref = repo.get_git_ref(f"heads/{branch_name}")
-                branch_ref.edit(base_sha, force=True)
+                if branch_ref:
+                    raise GithubPRFailedException(
+                        f"PR already exists for branch {branch_name}"
+                    )
             except Exception:
                 raise GithubPRFailedException(
                     f"Failed to create or update branch {branch_name}: {e}"
