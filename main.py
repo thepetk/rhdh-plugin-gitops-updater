@@ -3,9 +3,9 @@ import sys
 
 from src.constants import (
     DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH,
+    GITHUB_REF,
+    GITHUB_REPOSITORY,
     GITHUB_TOKEN,
-    GITOPS_BASE_BRANCH,
-    GITOPS_REPO,
     PR_CREATION_LIMIT,
     UPDATE_PR_STRATEGY,
     logger,
@@ -19,8 +19,8 @@ from src.utils import rhdh_plugin_needs_update
 
 
 def main():
-    if not GITOPS_REPO:
-        logger.error("Error: GITOPS_REPO environment variable is required")
+    if not GITHUB_REPOSITORY:
+        logger.error("Error: GITHUB_REPOSITORY environment variable is required")
         return
 
     if not GITHUB_TOKEN:
@@ -81,7 +81,7 @@ def main():
             )
 
             pr_url = gh_api_client.create_pull_request(
-                repo_full_name=GITOPS_REPO,
+                repo_full_name=GITHUB_REPOSITORY,
                 file_path=DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH,
                 new_content=updated_yaml,
                 branch_name=RHDHPluginUpdaterConfig.GH_PR_BRANCH_NAME_BASE.format(
@@ -95,7 +95,7 @@ def main():
                     current_version=plugin.current_version,
                     latest_version=latest_version,
                 ),
-                base_branch=GITOPS_BASE_BRANCH,
+                base_branch=GITHUB_REF,
             )
             logger.info(f"✓ Created PR: {pr_url}")
             prs_created += 1
@@ -124,7 +124,7 @@ def main():
             )
 
             pr_url = gh_api_client.create_pull_request(
-                repo_full_name=GITOPS_REPO,
+                repo_full_name=GITHUB_REPOSITORY,
                 file_path=DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH,
                 new_content=updated_yaml,
                 branch_name=RHDHPluginUpdaterConfig.GH_BULK_PR_BRANCH_NAME_BASE,
@@ -132,7 +132,7 @@ def main():
                     plugin_updates_count=len(plugin_updates)
                 ),
                 pr_body=pr_body,
-                base_branch=GITOPS_BASE_BRANCH,
+                base_branch=GITHUB_REF,
             )
             prs_created += 1
             logger.info(f"✓ Created joint PR: {pr_url}")

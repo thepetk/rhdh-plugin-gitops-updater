@@ -35,8 +35,6 @@ runs:
     DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH: ${{ inputs.config-path }}
     DYNAMIC_PLUGINS_CONFIG_YAML_LOCATION: ${{ inputs.config-location }}
     GITHUB_TOKEN: ${{ inputs.github-token }}
-    GITOPS_REPO: ${{ github.repository }}
-    GITOPS_BASE_BRANCH: ${{ github.ref_name }}
     UPDATE_PR_STRATEGY: ${{ inputs.update-pr-strategy }}
     PR_CREATION_LIMIT: ${{ inputs.pr-creation-limit }}
     VERBOSE: ${{ inputs.verbose }}

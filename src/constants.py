@@ -23,11 +23,12 @@ UPDATE_PR_STRATEGY = os.getenv("UPDATE_PR_STRATEGY", "separate")
 # PR_CREATION_LIMIT: is the maximum number of pull requests to create.
 PR_CREATION_LIMIT = int(os.getenv("PR_CREATION_LIMIT", "0"))
 
-# GITOPS_REPO: is the GitOps repository where PRs will be created (format: owner/repo)
-GITOPS_REPO = os.getenv("GITOPS_REPO", "")
+# GITHUB_REPOSITORY: is the Github repository where PRs will be
+# created (format: owner/repo)
+GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "")
 
-# GITOPS_BASE_BRANCH: is the base branch for PRs
-GITOPS_BASE_BRANCH = os.getenv("GITOPS_BASE_BRANCH", "main")
+# GITHUB_REF: is the base branch for PRs
+GITHUB_REF = os.getenv("GITHUB_REF", "main")
 
 # VERBOSE: is the verbosity level (0 = normal, 1 = verbose)
 VERBOSE = int(os.getenv("VERBOSE", 0))

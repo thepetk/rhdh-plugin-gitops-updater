@@ -19,19 +19,19 @@ class TestMain:
     handles all tests for main.
     """
 
-    @patch("main.GITOPS_REPO", None)
+    @patch("main.GITHUB_REPOSITORY", None)
     @patch("main.GITHUB_TOKEN", "test_token")
-    def test_main_no_gitops_repo(self, capsys: "Any") -> "None":
+    def test_main_no_GITHUB_REPOSITORY(self, capsys: "Any") -> "None":
         # should log error and return without raising exception
         main()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", None)
     def test_main_no_github_token(self, capsys: "Any") -> "None":
         # should log error and return without raising exception
         main()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.GithubAPIClient")
     @patch("main.RHDHPluginsConfigLoader")
@@ -47,7 +47,7 @@ class TestMain:
 
         mock_loader.load_rhdh_plugins.assert_called_once()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
     @patch("main.PR_CREATION_LIMIT", 0)
@@ -89,9 +89,9 @@ class TestMain:
         # no pr should be created
         mock_api.create_pull_request.assert_not_called()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
-    @patch("main.GITOPS_BASE_BRANCH", "main")
+    @patch("main.GITHUB_REF", "main")
     @patch(
         "main.DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH",
         "dynamic-plugins.yaml",
@@ -150,9 +150,9 @@ class TestMain:
         )
         mock_api.create_pull_request.assert_called_once()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
-    @patch("main.GITOPS_BASE_BRANCH", "main")
+    @patch("main.GITHUB_REF", "main")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.JOINT)
     @patch("main.PR_CREATION_LIMIT", 0)
     @patch("main.GithubAPIClient")
@@ -231,7 +231,7 @@ class TestMain:
         mock_updater.bulk_update_rhdh_plugins.assert_called_once()
         mock_api.create_pull_request.assert_called_once()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
     @patch("main.PR_CREATION_LIMIT", 1)
@@ -298,7 +298,7 @@ class TestMain:
         # should only create 1 PR due to limit
         assert mock_api.create_pull_request.call_count == 1
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
     @patch("main.PR_CREATION_LIMIT", 0)
@@ -345,7 +345,7 @@ class TestMain:
 
         mock_api.create_pull_request.assert_called_once()
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.JOINT)
     @patch("main.PR_CREATION_LIMIT", 0)
@@ -393,7 +393,7 @@ class TestMain:
 
         assert exc_info.value.code == 1
 
-    @patch("main.GITOPS_REPO", "owner/repo")
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
     @patch("main.GITHUB_TOKEN", "test_token")
     @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
     @patch("main.PR_CREATION_LIMIT", 0)

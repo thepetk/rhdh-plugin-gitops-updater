@@ -7,7 +7,7 @@ from github.Repository import Repository
 from packaging.version import Version
 from requests import Response
 
-from src.constants import GITOPS_BASE_BRANCH, UPDATE_PR_STRATEGY, logger
+from src.constants import GITHUB_REF, UPDATE_PR_STRATEGY, logger
 from src.exceptions import GithubPRFailedException
 from src.types import (
     GithubPullRequestStrategy,
@@ -178,7 +178,7 @@ class GithubAPIClient:
         branch_name: "str",
         pr_title: "str",
         pr_body: "str",
-        base_branch=GITOPS_BASE_BRANCH,
+        base_branch=GITHUB_REF,
     ) -> str:
         """
         creates a pull request with file changes.
