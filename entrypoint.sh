@@ -10,4 +10,5 @@ echo "PR strategy: $UPDATE_PR_STRATEGY"
 echo "PR creation limit: $PR_CREATION_LIMIT"
 echo "Verbose: $VERBOSE"
 
-uv run python /app/main.py
+cd /app
+uv run python main.py
