@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
+import logging
 import os
+import sys
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -37,6 +39,20 @@ GITOPS_REPO = os.getenv("GITOPS_REPO", "")
 
 # GITOPS_BASE_BRANCH: is the base branch for PRs
 GITOPS_BASE_BRANCH = os.getenv("GITOPS_BASE_BRANCH", "main")
+
+# VERBOSE: is the verbosity level (0 = normal, 1 = verbose)
+VERBOSE = int(os.getenv("VERBOSE", 0))
+
+# LOGGING_LEVEL: is the logging level based on verbosity
+LOGGING_LEVEL = "DEBUG" if VERBOSE > 0 else "INFO"
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, LOGGING_LEVEL),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 class GithubPRFailedException(Exception):
@@ -134,6 +150,7 @@ def get_plugins_list_from_dict(
     current: "dict[str, Any]" = data
     for key in keys:
         if not isinstance(current, dict) or key not in current:
+            logger.warning("invalid config location, cannot find plugins list")
             return []
 
         current = current[key]
@@ -193,6 +210,7 @@ class GithubAPIClient:
             params.update(extra_params)
 
         while url:
+            logger.debug(f"fetching (GET) {url}")
             response = self._session.get(url, params=params)
             response.raise_for_status()
 
@@ -231,6 +249,7 @@ class GithubAPIClient:
             if not isinstance(created_at, str):
                 continue
 
+            logger.debug(f"found version {tag} for package {package_name}")
             versions.append(
                 RHDHPluginPackageVersion(
                     name=str(v.get("name", "")),
@@ -252,6 +271,7 @@ class GithubAPIClient:
         fetch the RHDHPluginPackage for the given package name
         """
         # URL-encode the package name to handle slashes
+        logger.debug(f"fetching package {package_name}")
         encoded_package_name = quote(package_name, safe="")
         raw_versions = self._paginate(
             url=RHDHPluginUpdaterConfig.GH_PACKAGES_VERSION_BASE_URL.format(
@@ -261,6 +281,7 @@ class GithubAPIClient:
 
         # fallback to package without versions
         if not raw_versions:
+            logger.warning(f"no versions found for package {package_name}")
             return RHDHPluginPackage(name=package_name, versions=[])
 
         return self._convert_to_rhdh_plugin_package(package_name, raw_versions)
@@ -280,6 +301,7 @@ class GithubAPIClient:
 
         ::raises:: GithubPRFailedException: If PR creation fails
         """
+        logger.debug(f"creating PR in {repo_full_name} on branch {branch_name}")
         repo = self.client.get_repo(repo_full_name)
         base_ref = repo.get_git_ref(f"heads/{base_branch}")
         base_sha = base_ref.object.sha
@@ -289,6 +311,7 @@ class GithubAPIClient:
         except Exception as e:
             # case branch already exists, try to update it
             try:
+                logger.debug(f"branch {branch_name} already exists, updating it")
                 branch_ref = repo.get_git_ref(f"heads/{branch_name}")
                 branch_ref.edit(base_sha, force=True)
             except Exception:
@@ -298,6 +321,7 @@ class GithubAPIClient:
 
         try:
             contents = repo.get_contents(file_path, ref=branch_name)
+            logger.debug(f"updating file {file_path} in branch {branch_name}")
             repo.update_file(
                 path=file_path,
                 message=f"Update {file_path}",
@@ -311,6 +335,7 @@ class GithubAPIClient:
             ) from update_error
 
         try:
+            logger.debug(f"opening pull request {pr_title}")
             pr = repo.create_pull(
                 title=pr_title, body=pr_body, head=branch_name, base=base_branch
             )
@@ -422,17 +447,17 @@ class RHDHPluginsConfigLoader:
 
             # continue if is not an RHDH plugin or is disabled
             if not package.startswith(RHDHPluginUpdaterConfig.GH_CR_REGISTRY_PREFIX):
-                print(f"Info: Skipping plugin {package} as it's not RHDH Plugin")
+                logger.info(f"skipping plugin {package} as it's not RHDH Plugin")
                 continue
 
             if disabled is True:
-                print(f"Info: Skipping plugin {package} as it's disabled")
+                logger.info(f"skipping plugin {package} as it's disabled")
                 continue
 
             try:
                 parsed = self._parse_package_string(package)
             except InvalidRHDHPluginPackageDefinitionException as e:
-                print(f"Warning: {e}")
+                logger.warning(f"failed to parse package:: {e}")
                 continue
 
             if len(parsed.keys()) == 0:
@@ -452,6 +477,7 @@ class RHDHPluginsConfigLoader:
         """
         parses the config file and extracts RHDH plugins list.
         """
+        logger.debug("loading RHDH plugins from config...")
         with open(self.config_path, "r") as f:
             data = yaml.safe_load(f)
 
@@ -486,6 +512,9 @@ class RHDHPluginConfigUpdater:
 
         keys = self.config_location.split(".")
         plugins_list = get_plugins_list_from_dict(keys, data)
+        logger.debug(
+            f"updating config for plugin {plugin.plugin_name} to version {new_version}"
+        )
 
         for plugin_entry in plugins_list:
             package = plugin_entry.get("package", "")
@@ -502,8 +531,8 @@ class RHDHPluginConfigUpdater:
             new_tag = f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{new_version}"
             package = package.replace(old_tag, new_tag)
             plugin_entry["package"] = package
-            print(
-                f"Updated {plugin.plugin_name} from {plugin.current_version} to {new_version}"
+            logger.debug(
+                f"updated config for {plugin.plugin_name} from {plugin.current_version} to {new_version}"
             )
             break
 
@@ -555,11 +584,11 @@ def rhdh_plugin_needs_update(
 
 def main():
     if not GITOPS_REPO:
-        print("Error: GITOPS_REPO environment variable is required")
+        logger.error("Error: GITOPS_REPO environment variable is required")
         return
 
     if not GITHUB_TOKEN:
-        print("Error: GITHUB_TOKEN environment variable is required")
+        logger.error("Error: GITHUB_TOKEN environment variable is required")
         return
 
     gh_api_client = GithubAPIClient(token=GITHUB_TOKEN)
@@ -567,44 +596,44 @@ def main():
     rhdh_config_updater = RHDHPluginConfigUpdater()
     rhdh_plugins = rhdh_config_loader.load_rhdh_plugins()
 
-    print(f"Found {len(rhdh_plugins)} RHDH plugins to check for updates")
+    logger.info(f"found {len(rhdh_plugins)} RHDH plugins to check for updates")
 
     # list to cache all updates in case of joint strategy
     plugin_updates: "list[RHDHPluginUpdate]" = []
     prs_created = 0
 
     for plugin in rhdh_plugins:
-        print(f"\nProcessing plugin: {plugin.plugin_name}")
+        logger.info(f"Processing plugin: {plugin.plugin_name}")
 
         package = gh_api_client.fetch_package(plugin.package_name)
         if not package.versions:
-            print(
-                f"Warning: No versions found for package {plugin.package_name}, skipping..."
+            logger.warning(
+                f"no versions found for package {plugin.package_name}, skipping..."
             )
             continue
 
         latest_version = sorted(package.versions, key=lambda v: v.version)[-1].version
 
         if not rhdh_plugin_needs_update(latest_version, plugin.current_version):
-            print(
-                f"Info: Plugin {plugin.plugin_name} is up-to-date (version: {plugin.current_version})"
+            logger.info(
+                f"plugin {plugin.plugin_name} is up-to-date (version: {plugin.current_version})"
             )
             continue
 
-        print(
-            f"Info: Newer version found for plugin {plugin.plugin_name}: {latest_version} (current: {plugin.current_version})"
+        logger.info(
+            f"newer version found for plugin {plugin.plugin_name}: {latest_version} (current: {plugin.current_version})"
         )
 
         if UPDATE_PR_STRATEGY == GithubPullRequestStrategy.JOINT:
-            print("Debug: Caching update for joint PR")
+            logger.debug("caching plugin update for joint PR...")
             plugin_updates.append(
                 RHDHPluginUpdate(rhdh_plugin=plugin, new_version=latest_version)
             )
             continue
 
         if PR_CREATION_LIMIT > 0 and prs_created >= PR_CREATION_LIMIT:
-            print(
-                f"Info: Reached the PR creation limit of {PR_CREATION_LIMIT}, stopping..."
+            logger.warning(
+                f"reached the PR creation limit of {PR_CREATION_LIMIT}, stopping..."
             )
             break
 
@@ -630,14 +659,14 @@ def main():
                 ),
                 base_branch=GITOPS_BASE_BRANCH,
             )
-            print(f"✓ Created PR: {pr_url}")
+            logger.info(f"✓ Created PR: {pr_url}")
             prs_created += 1
 
         except GithubPRFailedException as e:
-            print(f"✗ Failed to create PR for {plugin.plugin_name}: {e}")
+            logger.warning(f"✗ Failed to create PR for {plugin.plugin_name}: {e}")
 
     if plugin_updates:
-        print(f"\n\nCreating joint PR for {len(plugin_updates)} plugin updates...")
+        logger.info(f"creating joint PR for {len(plugin_updates)} plugin updates...")
         try:
             updated_yaml = rhdh_config_updater.bulk_update_rhdh_plugins(plugin_updates)
 
@@ -660,12 +689,14 @@ def main():
                 pr_body=pr_body,
                 base_branch=GITOPS_BASE_BRANCH,
             )
-            print(f"✓ Created joint PR: {pr_url}")
+            prs_created += 1
+            logger.info(f"✓ Created joint PR: {pr_url}")
 
         except GithubPRFailedException as e:
-            print(f"✗ Failed to create joint PR: {e}")
+            logger.error(f"✗ Failed to create joint PR: {e}")
+            sys.exit(1)
 
-    print(f"\n\nDone! Created {prs_created} pull request(s)")
+    logger.info(f"done! Created {prs_created} pull request(s)")
 
 
 if __name__ == "__main__":
