@@ -1,21 +1,14 @@
 #!/bin/bash
 set -e
 
-# parse inputs from action.yml
-DYNAMIC_PLUGINS_PATH="$1"
-GITHUB_TOKEN="$2"
-PLUGIN_FILTER="$3"
-PR_MODE="$4"
-MAX_PRS="$5"
-
 echo "Starting RHDH Plugin GitOps Updater..."
-echo "Dynamic plugins path: $DYNAMIC_PLUGINS_PATH"
-echo "PR mode: $PR_MODE"
-echo "Max PRs: $MAX_PRS"
+echo "Config path: $DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH"
+echo "Config location: $DYNAMIC_PLUGINS_CONFIG_YAML_LOCATION"
+echo "GitOps repo: $GITOPS_REPO"
+echo "PR strategy: $UPDATE_PR_STRATEGY"
+echo "PR creation limit: $PR_CREATION_LIMIT"
+echo "Verbose: $VERBOSE"
 
-uv run python main.py \
-  --dynamic-plugins-path "$DYNAMIC_PLUGINS_PATH" \
-  --github-token "$GITHUB_TOKEN" \
-  --plugin-filter "$PLUGIN_FILTER" \
-  --pr-mode "$PR_MODE" \
-  --max-prs "$MAX_PRS"
+# Environment variables are already set by action.yml
+# They will be picked up by main.py automatically
+uv run python main.py
