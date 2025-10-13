@@ -2,6 +2,7 @@
 
 [![Tests](https://github.com/thepetk/rhdh-plugin-gitops-updater/actions/workflows/ci.yaml/badge.svg)](https://github.com/thepetk/rhdh-plugin-gitops-updater/actions/workflows/ci.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
 > [!IMPORTANT]
 > This is a personal **Proof of Concept (PoC)** GitHub Action. Use at your own risk in production environments.
