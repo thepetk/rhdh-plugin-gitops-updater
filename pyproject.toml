@@ -19,3 +19,6 @@ ignore = []
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
+
+[tool.ty.src]
+include = ["src", "main.py"]
