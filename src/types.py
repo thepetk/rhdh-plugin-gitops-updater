@@ -59,8 +59,8 @@ class RHDHPluginUpdaterConfig:
     )
     GH_PR_BRANCH_NAME_BASE = "update-{plugin_name}-{latest_version}"
     GH_PR_TITLE_BASE = (
-        "[rhdh-plugin-gitops-updater] Update `{plugin_name}` "
-        "to version {latest_version}"
+        "chore(`rhdh-plugin-gitops-updater`) Update `{plugin_name}` "
+        "to version `{latest_version}`"
     )
     GH_PR_BODY_BASE = """## Plugin Update
 
@@ -74,7 +74,7 @@ This PR updates the RHDH plugin to the latest version.
 """
     GH_BULK_PR_BRANCH_NAME_BASE = "update-rhdh-plugins-batch"
     GH_BULK_PR_TITLE_BASE = (
-        "[rhdh-plugin-gitops-updater] Update {plugin_updates_count} RHDH plugins"
+        "chore(`rhdh-plugin-gitops-updater`) Update {plugin_updates_count} RHDH plugins"
     )
     GH_BULK_PR_BODY_BASE = """## Batch Plugin Update
 
