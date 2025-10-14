@@ -11,9 +11,13 @@ from src.constants import (
     logger,
 )
 from src.exceptions import GithubPRFailedException
-from src.github_api_client import GithubAPIClient, RHDHPluginUpdaterConfig
+from src.github_api_client import GithubAPIClient
 from src.loader import RHDHPluginsConfigLoader
-from src.types import GithubPullRequestStrategy, RHDHPluginUpdate
+from src.types import (
+    GithubPullRequestStrategy,
+    RHDHPluginUpdate,
+    RHDHPluginUpdaterConfig,
+)
 from src.updater import RHDHPluginConfigUpdater
 from src.utils import rhdh_plugin_needs_update
 
@@ -31,6 +35,9 @@ def main():
     rhdh_config_loader = RHDHPluginsConfigLoader()
     rhdh_config_updater = RHDHPluginConfigUpdater()
     rhdh_plugins = rhdh_config_loader.load_rhdh_plugins()
+    trimmed_file_path = DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH.replace(
+        RHDHPluginUpdaterConfig.GH_RUNNER_PREFIX, ""
+    )
 
     logger.info(f"found {len(rhdh_plugins)} RHDH plugins to check for updates")
 
@@ -82,7 +89,7 @@ def main():
 
             pr_url = gh_api_client.create_pull_request(
                 repo_full_name=GITHUB_REPOSITORY,
-                file_path=DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH,
+                file_path=trimmed_file_path,
                 new_content=updated_yaml,
                 branch_name=RHDHPluginUpdaterConfig.GH_PR_BRANCH_NAME_BASE.format(
                     plugin_name=plugin.plugin_name, latest_version=latest_version
@@ -125,7 +132,7 @@ def main():
 
             pr_url = gh_api_client.create_pull_request(
                 repo_full_name=GITHUB_REPOSITORY,
-                file_path=DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH,
+                file_path=trimmed_file_path,
                 new_content=updated_yaml,
                 branch_name=RHDHPluginUpdaterConfig.GH_BULK_PR_BRANCH_NAME_BASE,
                 pr_title=RHDHPluginUpdaterConfig.GH_BULK_PR_TITLE_BASE.format(

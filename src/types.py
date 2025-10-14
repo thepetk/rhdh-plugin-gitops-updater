@@ -53,6 +53,7 @@ class RHDHPluginUpdaterConfig:
     GH_PACKAGE_TAG_PREFIX = "next__"
     GH_PACKAGES_BASE_URL = "https://api.github.com/orgs/{org}/packages"
     GH_PACKAGES_VERSION_BASE_URL = "https://api.github.com/orgs/{org}/packages/{package_type}/{package_name}/versions"
+    GH_RUNNER_PREFIX = "/github/workspace/"
     GH_CR_REGISTRY_PREFIX = (
         "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/"
     )
