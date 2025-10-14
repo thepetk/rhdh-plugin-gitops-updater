@@ -10,5 +10,9 @@ echo "PR strategy: $UPDATE_PR_STRATEGY"
 echo "PR creation limit: $PR_CREATION_LIMIT"
 echo "Verbose: $VERBOSE"
 
+if [[ "$DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH" != /* ]]; then
+    export DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH="/github/workspace/$DYNAMIC_PLUGINS_CONFIG_YAML_FILE_PATH"
+fi
+
 cd /app
 uv run python main.py
