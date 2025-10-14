@@ -28,7 +28,12 @@ PR_CREATION_LIMIT = int(os.getenv("PR_CREATION_LIMIT", "0"))
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "")
 
 # GITHUB_REF: is the base branch for PRs
-GITHUB_REF = os.getenv("GITHUB_REF", "main")
+_github_ref = os.getenv("GITHUB_REF", "main")
+GITHUB_REF = (
+    _github_ref.replace("refs/heads/", "")
+    if _github_ref.startswith("refs/heads/")
+    else _github_ref
+)
 
 # VERBOSE: is the verbosity level (0 = normal, 1 = verbose)
 VERBOSE = int(os.getenv("VERBOSE", 0))
