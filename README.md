@@ -113,6 +113,22 @@ For debugging or detailed information:
     verbose: "1"
 ```
 
+### Custom Tag Prefixes
+
+Specify custom tag prefixes to filter plugin versions:
+
+```yaml
+- name: Update RHDH plugins
+  uses: thepetk/rhdh-plugin-gitops-updater@v1
+  with:
+    config-path: "charts/rhdh/values.yaml"
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    tag-prefixes: |
+      next__
+      v1__
+      stable__
+```
+
 ## Inputs
 
 | Input                | Description                                                                              | Required | Default                  |
@@ -122,6 +138,7 @@ For debugging or detailed information:
 | `github-token`       | GitHub token for API access and PR creation                                              | Yes      | -                        |
 | `update-pr-strategy` | PR creation strategy: `separate` or `joint`                                              | No       | `separate`               |
 | `pr-creation-limit`  | Maximum number of PRs to create (0 for unlimited, only applies with `separate` strategy) | No       | `0`                      |
+| `tag-prefixes`       | Tag prefixes to consider when checking for plugin updates (newline-separated list)       | No       | `next__`                 |
 | `verbose`            | Enable verbose logging (0 = normal, 1 = debug)                                           | No       | `0`                      |
 
 ## How It Works
@@ -147,6 +164,10 @@ global:
       - disabled: false
         package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/another-plugin:next__2.0.0!another-plugin
 ```
+
+### Tag Prefixes
+
+The action uses tag prefixes to filter which plugin versions to consider for updates. By default, it looks for tags with the `next__` prefix (e.g., `next__1.0.0`). You can customize this behavior using the `tag-prefixes` input to match your versioning scheme.
 
 ## Permissions
 
