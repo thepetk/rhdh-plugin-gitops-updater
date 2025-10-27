@@ -23,6 +23,22 @@ class RHDHPluginConfigUpdater:
         self.config_path = config_path
         self.config_location = config_location
 
+    def _find_current_tag_prefix(self, content: "str", plugin: "RHDHPlugin") -> "str":
+        """
+        finds which tag prefix is currently being used for the plugin
+        by searching the content for the plugin with any of the configured prefixes
+        """
+        for prefix in RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX:
+            test_tag = f"{prefix}{plugin.current_version}"
+            pattern = re.compile(
+                rf"package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:{re.escape(test_tag)}![^\s]*",
+                re.MULTILINE,
+            )
+            if pattern.search(content):
+                return prefix
+
+        return RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX[0]
+
     def _update_plugin_version_in_content(
         self,
         content: "str",
@@ -37,10 +53,11 @@ class RHDHPluginConfigUpdater:
             f"updating config for plugin {plugin.plugin_name} to version {new_version}"
         )
 
-        old_tag = (
-            f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{plugin.current_version}"
-        )
-        new_tag = f"{RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX}{new_version}"
+        # Find which tag prefix is currently used for this plugin
+        current_prefix = self._find_current_tag_prefix(content, plugin)
+
+        old_tag = f"{current_prefix}{plugin.current_version}"
+        new_tag = f"{current_prefix}{new_version}"
 
         # pattern to find the specific plugin's package line with the old version
         pattern = re.compile(

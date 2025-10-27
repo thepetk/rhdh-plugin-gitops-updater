@@ -3,6 +3,7 @@ from urllib.parse import quote
 
 import requests
 from github import Auth, Github
+from github.ContentFile import ContentFile
 from github.Repository import Repository
 from packaging.version import Version
 from requests import Response
@@ -15,6 +16,7 @@ from src.types import (
     RHDHPluginPackageVersion,
     RHDHPluginUpdaterConfig,
 )
+from src.utils import match_tag_prefix
 
 
 class GithubAPIClient:
@@ -39,12 +41,12 @@ class GithubAPIClient:
 
     def _fetch_next(
         self, response: "Response", url: "str", params: "dict[str, int]"
-    ) -> "tuple[str | None, dict[str, int]]":
+    ) -> "tuple[str, dict[str, int]]":
         """
         extracts the next URL from the response links if available
         """
         if "next" not in response.links:
-            return None, params
+            return "", params
 
         # params unset as the next URL already contains query params
         params = {}
@@ -101,7 +103,8 @@ class GithubAPIClient:
                 continue
 
             tag = str(tags[0])
-            if not tag.startswith(RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX):
+            matched_prefix = match_tag_prefix(tag)
+            if not matched_prefix:
                 continue
 
             created_at = v.get("created_at")
@@ -112,9 +115,7 @@ class GithubAPIClient:
             versions.append(
                 RHDHPluginPackageVersion(
                     name=str(v.get("name", "")),
-                    version=Version(
-                        tag.replace(RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX, "")
-                    ),
+                    version=Version(tag.replace(matched_prefix, "")),
                     created_at=created_at,
                 )
             )
@@ -221,6 +222,14 @@ class GithubAPIClient:
 
         try:
             contents = repo.get_contents(file_path, ref=branch_name)
+
+            # ensure we have a single ContentFile
+            if not isinstance(contents, ContentFile):
+                raise GithubPRFailedException(
+                    f"Expected a file at {file_path}, "
+                    "but got a directory or invalid response"
+                )
+
             logger.debug(f"updating file {file_path} in branch {branch_name}")
             repo.update_file(
                 path=file_path,

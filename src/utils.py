@@ -4,6 +4,7 @@ from typing import Any
 from packaging.version import Version
 
 from src.constants import logger
+from src.types import RHDHPluginUpdaterConfig
 
 
 def get_plugins_list_from_dict(
@@ -30,3 +31,14 @@ def rhdh_plugin_needs_update(
     checks if the latest version is greater than the current version
     """
     return latest_version > current_version
+
+
+def match_tag_prefix(tag: "str") -> "str | None":
+    """
+    checks if a tag starts with any of the configured prefixes
+    and returns the matched prefix, or None if no match
+    """
+    for prefix in RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX:
+        if tag.startswith(prefix):
+            return prefix
+    return None

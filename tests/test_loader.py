@@ -172,3 +172,88 @@ class TestRHDHPluginsConfigLoader:
 
         # clean everything
         Path(temp_path).unlink()
+
+    def test_match_tag_prefix_with_next_prefix(self) -> "None":
+        from src.utils import match_tag_prefix
+
+        tag = "next__0.1.2"
+
+        result = match_tag_prefix(tag)
+
+        assert result == "next__"
+
+    def test_match_tag_prefix_with_other_prefix(self) -> "None":
+        from unittest.mock import patch
+
+        from src.utils import match_tag_prefix
+
+        tag = "stable__1.0.0"
+
+        # temporarily override the config to include multiple prefixes
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = match_tag_prefix(tag)
+
+        assert result == "stable__"
+
+    def test_match_tag_prefix_no_match(self) -> "None":
+        from src.utils import match_tag_prefix
+
+        tag = "v1.0.0"
+
+        result = match_tag_prefix(tag)
+
+        assert result is None
+
+    def test_match_tag_prefix_partial_match(self) -> "None":
+        from unittest.mock import patch
+
+        from src.utils import match_tag_prefix
+
+        # prefix is in the middle of the tag, not at the start
+        tag = "some-next__0.1.2"
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__"],
+        ):
+            result = match_tag_prefix(tag)
+
+        # should not match since prefix must be at the start
+        assert result is None
+
+    def test_parse_package_string_with_different_prefix(self) -> "None":
+        from unittest.mock import patch
+
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:stable__0.1.2!backstage-plugin-mcp-actions-backend"
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = loader._parse_package_string(package)
+
+        assert (
+            result["package_name"]
+            == "rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend"
+        )
+        assert result["version"] == Version("0.1.2")
+        assert result["plugin_name"] == "backstage-plugin-mcp-actions-backend"
+
+    def test_parse_package_string_with_multiple_prefixes_configured(self) -> "None":
+        from unittest.mock import patch
+
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/test-plugin:previous__2.0.0!test-plugin"
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = loader._parse_package_string(package)
+
+        assert result["version"] == Version("2.0.0")
+        assert result["plugin_name"] == "test-plugin"
