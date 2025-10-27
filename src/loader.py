@@ -10,7 +10,7 @@ from src.constants import (
 )
 from src.exceptions import InvalidRHDHPluginPackageDefinitionException
 from src.types import RHDHPlugin, RHDHPluginUpdaterConfig
-from src.utils import get_plugins_list_from_dict
+from src.utils import get_plugins_list_from_dict, match_tag_prefix
 
 
 class RHDHPluginsConfigLoader:
@@ -28,7 +28,7 @@ class RHDHPluginsConfigLoader:
 
     def _fetch_plugins_by_location(
         self, data: "dict[str, str | int | bool]"
-    ) -> "list[dict[str, str | bool]]":
+    ) -> "list[dict[str, str | int | bool]]":
         """
         fetches the plugins from the config file based on the config location
         """
@@ -83,16 +83,13 @@ class RHDHPluginsConfigLoader:
 
         name, raw_version = name_and_version.rsplit(":", 1)
 
-        if RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX not in raw_version:
+        matched_prefix = match_tag_prefix(raw_version)
+        if not matched_prefix:
             raise InvalidRHDHPluginPackageDefinitionException(
                 f"Tag {raw_version} not valid for package {package}"
             )
 
-        version = Version(
-            version=raw_version.replace(
-                RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX, ""
-            )
-        )
+        version = Version(version=raw_version.replace(matched_prefix, ""))
 
         package_name = f"rhdh-plugin-export-overlays/{name}"
 
@@ -133,9 +130,9 @@ class RHDHPluginsConfigLoader:
 
             rhdh_plugins.append(
                 RHDHPlugin(
-                    package_name=parsed["package_name"],
-                    current_version=parsed["version"],
-                    plugin_name=parsed["plugin_name"],
+                    package_name=str(parsed["package_name"]),
+                    current_version=parsed["version"],  # type: ignore
+                    plugin_name=str(parsed["plugin_name"]),
                     disabled=disabled,
                 )
             )

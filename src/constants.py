@@ -38,6 +38,21 @@ GITHUB_REF = (
 # VERBOSE: is the verbosity level (0 = normal, 1 = verbose)
 VERBOSE = int(os.getenv("VERBOSE", 0))
 
+# GH_PACKAGE_TAG_PREFIXES: newline-separated or comma-separated list
+# of tag prefixes to consider when checking for plugin updates (e.g.,
+# "next__\nprevious__" or "next__,previous__")
+_tag_prefixes_str = os.getenv("GH_PACKAGE_TAG_PREFIXES", "next__")
+
+# check if there are new lines in the string to determine the separator
+if "\n" in _tag_prefixes_str:
+    GH_PACKAGE_TAG_PREFIXES = [
+        prefix.strip() for prefix in _tag_prefixes_str.split("\n") if prefix.strip()
+    ]
+else:
+    GH_PACKAGE_TAG_PREFIXES = [
+        prefix.strip() for prefix in _tag_prefixes_str.split(",") if prefix.strip()
+    ]
+
 # LOGGING_LEVEL: is the logging level based on verbosity
 LOGGING_LEVEL = "DEBUG" if VERBOSE > 0 else "INFO"
 

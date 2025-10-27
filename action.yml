@@ -27,6 +27,10 @@ inputs:
     description: 'Enable verbose logging (0 = normal, 1 = verbose/debug)'
     required: false
     default: '0'
+  tag-prefixes:
+    description: 'Tag prefixes to consider when checking for plugin updates (newline-separated list)'
+    required: false
+    default: 'next__'
 
 runs:
   using: 'docker'
@@ -38,3 +42,4 @@ runs:
     UPDATE_PR_STRATEGY: ${{ inputs.update-pr-strategy }}
     PR_CREATION_LIMIT: ${{ inputs.pr-creation-limit }}
     VERBOSE: ${{ inputs.verbose }}
+    GH_PACKAGE_TAG_PREFIXES: ${{ inputs.tag-prefixes }}

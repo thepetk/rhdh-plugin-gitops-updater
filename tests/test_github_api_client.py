@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 import requests
+from github.ContentFile import ContentFile
 from packaging.version import Version
 
 from src.exceptions import GithubPRFailedException
@@ -57,7 +58,7 @@ class TestFetchNext:
 
         next_url, next_params = github_client._fetch_next(response, url, params)
 
-        assert next_url is None
+        assert next_url == ""
         assert next_params == params
 
     def test_fetch_next_with_next_link(
@@ -406,7 +407,7 @@ class TestCreatePullRequest:
         ]
         mock_repo.create_git_ref.return_value = Mock()
 
-        mock_contents = Mock()
+        mock_contents = Mock(spec=ContentFile)
         mock_contents.decoded_content = b"old content\n"
         mock_contents.sha = "file_sha_123"
         mock_repo.get_contents.return_value = mock_contents
@@ -531,7 +532,7 @@ class TestCreatePullRequest:
         ]
         mock_repo.create_git_ref.return_value = Mock()
 
-        mock_contents = Mock()
+        mock_contents = Mock(spec=ContentFile)
         mock_contents.decoded_content = b"old content\n"
         mock_contents.sha = "file_sha_123"
         mock_repo.get_contents.return_value = mock_contents
@@ -565,7 +566,7 @@ class TestCreatePullRequest:
         ]
         mock_repo.create_git_ref.return_value = Mock()
 
-        mock_contents = Mock()
+        mock_contents = Mock(spec=ContentFile)
         mock_contents.decoded_content = b"old content\n"
         mock_contents.sha = "file_sha_123"
         mock_repo.get_contents.return_value = mock_contents

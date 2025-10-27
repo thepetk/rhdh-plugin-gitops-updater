@@ -144,3 +144,125 @@ class TestRHDHPluginConfigUpdater:
 
         with pytest.raises(FileNotFoundError):
             updater.update_rhdh_plugin(plugin, Version("1.0.1"))
+
+    def test_find_current_tag_prefix_with_next_prefix(
+        self, sample_yaml_content: "str", sample_plugin: "RHDHPlugin"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+
+        result = updater._find_current_tag_prefix(sample_yaml_content, sample_plugin)
+
+        assert result == "next__"
+
+    def test_find_current_tag_prefix_with_multiple_prefixes(
+        self,
+        sample_yaml_content_with_multiple_prefixes: "str",
+        sample_plugin_with_stable_prefix: "RHDHPlugin",
+    ) -> "None":
+        from unittest.mock import patch
+
+        updater = RHDHPluginConfigUpdater()
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = updater._find_current_tag_prefix(
+                sample_yaml_content_with_multiple_prefixes,
+                sample_plugin_with_stable_prefix,
+            )
+
+        assert result == "stable__"
+
+    def test_find_current_tag_prefix_with_previous_prefix(
+        self,
+        sample_yaml_content_with_multiple_prefixes: "str",
+        sample_plugin_with_previous_prefix: "RHDHPlugin",
+    ) -> "None":
+        from unittest.mock import patch
+
+        updater = RHDHPluginConfigUpdater()
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = updater._find_current_tag_prefix(
+                sample_yaml_content_with_multiple_prefixes,
+                sample_plugin_with_previous_prefix,
+            )
+
+        assert result == "previous__"
+
+    def test_find_current_tag_prefix_defaults_to_first_when_not_found(
+        self, sample_yaml_content: "str"
+    ) -> "None":
+        from unittest.mock import patch
+
+        updater = RHDHPluginConfigUpdater()
+        non_existent_plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/non-existent",
+            current_version=Version("1.0.0"),
+            plugin_name="non-existent-plugin",
+            disabled=False,
+        )
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__"],
+        ):
+            result = updater._find_current_tag_prefix(
+                sample_yaml_content, non_existent_plugin
+            )
+
+        assert result == "next__"
+
+    def test_update_plugin_version_preserves_original_prefix(
+        self,
+        sample_yaml_content_with_multiple_prefixes: "str",
+        sample_plugin_with_stable_prefix: "RHDHPlugin",
+    ) -> "None":
+        from unittest.mock import patch
+
+        updater = RHDHPluginConfigUpdater()
+        new_version = Version("0.2.1")
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            updated_content = updater._update_plugin_version_in_content(
+                sample_yaml_content_with_multiple_prefixes,
+                sample_plugin_with_stable_prefix,
+                new_version,
+            )
+
+        assert "stable__0.2.1" in updated_content
+        assert "stable__0.2.0" not in updated_content
+        assert "next__0.1.2" in updated_content
+        assert "previous__1.0.0" in updated_content
+
+    def test_update_plugin_version_with_different_prefixes(
+        self,
+        sample_yaml_content_with_multiple_prefixes: "str",
+        sample_plugin_with_previous_prefix: "RHDHPlugin",
+    ) -> "None":
+        from unittest.mock import patch
+
+        updater = RHDHPluginConfigUpdater()
+        new_version = Version("1.1.0")
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            updated_content = updater._update_plugin_version_in_content(
+                sample_yaml_content_with_multiple_prefixes,
+                sample_plugin_with_previous_prefix,
+                new_version,
+            )
+
+        assert "previous__1.1.0" in updated_content
+        assert "previous__1.0.0" not in updated_content
+        assert "next__0.1.2" in updated_content
+        assert "stable__0.2.0" in updated_content

@@ -209,3 +209,46 @@ def sample_package_versions() -> "list[dict[str, Any]]":
             "created_at": "2024-01-25T10:00:00Z",
         },
     ]
+
+
+@pytest.fixture
+def sample_yaml_content_with_multiple_prefixes() -> "str":
+    """
+    creates a sample YAML content with plugins using different tag prefixes.
+    """
+    return """global:
+  dynamic:
+    plugins:
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:next__0.1.2!backstage-plugin-mcp-actions-backend
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool:stable__0.2.0!red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/another-plugin:previous__1.0.0!another-plugin
+"""
+
+
+@pytest.fixture
+def sample_plugin_with_stable_prefix() -> "RHDHPlugin":
+    """
+    creates a sample RHDHPlugin with stable__ prefix for testing.
+    """
+    return RHDHPlugin(
+        package_name="rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool",
+        current_version=Version("0.2.0"),
+        plugin_name="red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool",
+        disabled=False,
+    )
+
+
+@pytest.fixture
+def sample_plugin_with_previous_prefix() -> "RHDHPlugin":
+    """
+    creates a sample RHDHPlugin with previous__ prefix for testing.
+    """
+    return RHDHPlugin(
+        package_name="rhdh-plugin-export-overlays/another-plugin",
+        current_version=Version("1.0.0"),
+        plugin_name="another-plugin",
+        disabled=False,
+    )

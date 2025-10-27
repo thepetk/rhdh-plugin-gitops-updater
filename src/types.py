@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from packaging.version import Version
 
+from src.constants import GH_PACKAGE_TAG_PREFIXES
+
 
 class GithubPullRequestStrategy:
     SEPARATE = "separate"
@@ -50,7 +52,7 @@ class RHDHPluginUpdate:
 class RHDHPluginUpdaterConfig:
     GH_ORG_NAME = "redhat-developer"
     GH_REPO_NAME = "rhdh-plugin-export-overlays"
-    GH_PACKAGE_TAG_PREFIX = "next__"
+    GH_PACKAGE_TAG_PREFIX = GH_PACKAGE_TAG_PREFIXES
     GH_PACKAGES_BASE_URL = "https://api.github.com/orgs/{org}/packages"
     GH_PACKAGES_VERSION_BASE_URL = "https://api.github.com/orgs/{org}/packages/{package_type}/{package_name}/versions"
     GH_RUNNER_PREFIX = "/github/workspace/"
