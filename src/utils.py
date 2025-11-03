@@ -24,13 +24,69 @@ def get_plugins_list_from_dict(
     return [] if not isinstance(current, list) else current
 
 
+def parse_dual_version(version_string: "str") -> "tuple[Version, Version | None]":
+    """
+    parses a version string that may contain dual versions separated by '__'.
+    """
+    if "__" in version_string:
+        parts = version_string.split("__", 1)
+        if len(parts) == 2 and parts[1]:
+            return (Version(parts[0]), Version(parts[1]))
+
+    # single version or invalid dual version
+    return (Version(version_string.split("__")[0]), None)
+
+
+def compare_versions(
+    version1: "Version",
+    version2: "Version",
+    secondary1: "Version | None" = None,
+    secondary2: "Version | None" = None,
+) -> "int":
+    """
+    compares two versions with optional secondary versions
+    """
+    # compare primary versions
+    if version1 < version2:
+        return -1
+    if version1 > version2:
+        return 1
+
+    # primary versions are equal, compare secondary versions
+    if secondary1 is None and secondary2 is None:
+        return 0
+
+    if secondary1 is None:
+        return -1  # version2 has secondary, so it's greater
+
+    if secondary2 is None:
+        return 1  # version1 has secondary, so it's greater
+
+    # both have secondary versions
+    if secondary1 < secondary2:
+        return -1
+    if secondary1 > secondary2:
+        return 1
+
+    return 0
+
+
 def rhdh_plugin_needs_update(
-    latest_version: "Version", current_version: "Version"
+    latest_version: "Version",
+    current_version: "Version",
+    latest_secondary: "Version | None" = None,
+    current_secondary: "Version | None" = None,
 ) -> "bool":
     """
-    checks if the latest version is greater than the current version
+    checks if the latest version is greater than the current version.
+    supports dual versions with optional secondary version components.
     """
-    return latest_version > current_version
+    return (
+        compare_versions(
+            latest_version, current_version, latest_secondary, current_secondary
+        )
+        > 0
+    )
 
 
 def match_tag_prefix(tag: "str") -> "str | None":

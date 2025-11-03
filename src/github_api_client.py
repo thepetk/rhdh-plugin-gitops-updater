@@ -5,7 +5,6 @@ import requests
 from github import Auth, Github
 from github.ContentFile import ContentFile
 from github.Repository import Repository
-from packaging.version import Version
 from requests import Response
 
 from src.constants import GITHUB_REF, UPDATE_PR_STRATEGY, logger
@@ -16,7 +15,7 @@ from src.types import (
     RHDHPluginPackageVersion,
     RHDHPluginUpdaterConfig,
 )
-from src.utils import match_tag_prefix
+from src.utils import match_tag_prefix, parse_dual_version
 
 
 class GithubAPIClient:
@@ -111,12 +110,17 @@ class GithubAPIClient:
             if not isinstance(created_at, str):
                 continue
 
+            # remove prefix and parse potential dual version
+            version_string = tag.replace(matched_prefix, "")
+            version, second_version = parse_dual_version(version_string)
+
             logger.debug(f"found version {tag} for package {package_name}")
             versions.append(
                 RHDHPluginPackageVersion(
                     name=str(v.get("name", "")),
-                    version=Version(tag.replace(matched_prefix, "")),
+                    version=version,
                     created_at=created_at,
+                    second_version=second_version,
                 )
             )
 

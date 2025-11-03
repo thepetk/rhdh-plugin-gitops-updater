@@ -55,9 +55,19 @@ def main():
             )
             continue
 
-        latest_version = sorted(package.versions, key=lambda v: v.version)[-1].version
+        # sort by version, considering dual versions
+        latest_package_version = sorted(
+            package.versions, key=lambda v: (v.version, v.second_version or "")
+        )[-1]
+        latest_version = latest_package_version.version
+        latest_second_version = latest_package_version.second_version
 
-        if not rhdh_plugin_needs_update(latest_version, plugin.current_version):
+        if not rhdh_plugin_needs_update(
+            latest_version,
+            plugin.current_version,
+            latest_second_version,
+            plugin.current_second_version,
+        ):
             logger.info(
                 f"plugin {plugin.plugin_name} is up-to-date "
                 f"(version: {plugin.current_version})"
@@ -72,7 +82,11 @@ def main():
         if UPDATE_PR_STRATEGY == GithubPullRequestStrategy.JOINT:
             logger.debug("caching plugin update for joint PR...")
             plugin_updates.append(
-                RHDHPluginUpdate(rhdh_plugin=plugin, new_version=latest_version)
+                RHDHPluginUpdate(
+                    rhdh_plugin=plugin,
+                    new_version=latest_version,
+                    new_second_version=latest_second_version,
+                )
             )
             continue
 
@@ -84,7 +98,7 @@ def main():
 
         try:
             updated_yaml = rhdh_config_updater.update_rhdh_plugin(
-                plugin, latest_version
+                plugin, latest_version, latest_second_version
             )
 
             pr_url = gh_api_client.create_pull_request(

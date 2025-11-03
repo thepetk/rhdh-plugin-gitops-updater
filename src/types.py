@@ -15,6 +15,7 @@ class RHDHPluginPackageVersion:
     name: "str"
     version: "Version"
     created_at: "str"
+    second_version: "Version | None" = None
 
 
 @dataclass
@@ -37,6 +38,7 @@ class RHDHPlugin:
     current_version: "Version"
     plugin_name: "str"
     disabled: "bool"
+    current_second_version: "Version | None" = None
 
 
 @dataclass
@@ -47,6 +49,7 @@ class RHDHPluginUpdate:
 
     rhdh_plugin: "RHDHPlugin"
     new_version: "Version"
+    new_second_version: "Version | None" = None
 
 
 class RHDHPluginUpdaterConfig:
