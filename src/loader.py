@@ -10,7 +10,7 @@ from src.constants import (
 )
 from src.exceptions import InvalidRHDHPluginPackageDefinitionException
 from src.types import RHDHPlugin, RHDHPluginUpdaterConfig
-from src.utils import get_plugins_list_from_dict, match_tag_prefix
+from src.utils import get_plugins_list_from_dict, match_tag_prefix, parse_dual_version
 
 
 class RHDHPluginsConfigLoader:
@@ -37,7 +37,9 @@ class RHDHPluginsConfigLoader:
 
         return plugins_list if isinstance(plugins_list, list) else []
 
-    def _parse_package_string(self, package: "str") -> "dict[str, str | Version]":
+    def _parse_package_string(
+        self, package: "str"
+    ) -> "dict[str, str | Version | None]":
         """
         parses the OCI package string to extract plugin info.
 
@@ -89,13 +91,16 @@ class RHDHPluginsConfigLoader:
                 f"Tag {raw_version} not valid for package {package}"
             )
 
-        version = Version(version=raw_version.replace(matched_prefix, ""))
+        # remove prefix and parse potential dual version
+        version_string = raw_version.replace(matched_prefix, "")
+        version, second_version = parse_dual_version(version_string)
 
         package_name = f"rhdh-plugin-export-overlays/{name}"
 
         return {
             "package_name": package_name,
             "version": version,
+            "second_version": second_version,
             "plugin_name": plugin_name,
         }
 
@@ -134,6 +139,7 @@ class RHDHPluginsConfigLoader:
                     current_version=parsed["version"],  # type: ignore
                     plugin_name=str(parsed["plugin_name"]),
                     disabled=disabled,
+                    current_second_version=parsed.get("second_version"),  # type: ignore
                 )
             )
         return rhdh_plugins

@@ -257,3 +257,73 @@ class TestRHDHPluginsConfigLoader:
 
         assert result["version"] == Version("2.0.0")
         assert result["plugin_name"] == "test-plugin"
+
+    def test_parse_package_string_with_dual_version(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin:next__1.42.5__0.1.0!backstage-plugin"
+
+        result = loader._parse_package_string(package)
+
+        assert result["package_name"] == "rhdh-plugin-export-overlays/backstage-plugin"
+        assert result["version"] == Version("1.42.5")
+        assert result["second_version"] == Version("0.1.0")
+        assert result["plugin_name"] == "backstage-plugin"
+
+    def test_parse_package_string_with_dual_version_complex(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/test-plugin:next__2.10.15__1.5.3!test-plugin"
+
+        result = loader._parse_package_string(package)
+
+        assert result["version"] == Version("2.10.15")
+        assert result["second_version"] == Version("1.5.3")
+
+    def test_parse_package_string_single_version_has_no_second_version(
+        self,
+    ) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin:next__1.0.0!backstage-plugin"
+
+        result = loader._parse_package_string(package)
+
+        assert result["version"] == Version("1.0.0")
+        assert result["second_version"] is None
+
+    def test_convert_rhdhplugin_list_with_dual_version_plugins(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        plugins_list = [
+            {
+                "disabled": False,
+                "package": "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin1:next__1.42.5__0.1.0!plugin1",
+            },
+            {
+                "disabled": False,
+                "package": "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin2:next__2.0.0!plugin2",
+            },
+        ]
+
+        result = loader._convert_rhdhplugin_list(plugins_list)
+
+        assert len(result) == 2
+        # first plugin has dual version
+        assert result[0].current_version == Version("1.42.5")
+        assert result[0].current_second_version == Version("0.1.0")
+        # second plugin has single version
+        assert result[1].current_version == Version("2.0.0")
+        assert result[1].current_second_version is None
+
+    def test_parse_package_string_dual_version_with_different_prefix(self) -> "None":
+        from unittest.mock import patch
+
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/test-plugin:stable__1.43.0__0.2.0!test-plugin"
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["next__", "stable__", "previous__"],
+        ):
+            result = loader._parse_package_string(package)
+
+        assert result["version"] == Version("1.43.0")
+        assert result["second_version"] == Version("0.2.0")
+        assert result["plugin_name"] == "test-plugin"

@@ -146,7 +146,7 @@ class TestMain:
         mock_loader.load_rhdh_plugins.assert_called_once()
         mock_api.fetch_package.assert_called_once_with("test-package")
         mock_updater.update_rhdh_plugin.assert_called_once_with(
-            mock_plugin, Version("1.1.0")
+            mock_plugin, Version("1.1.0"), None
         )
         mock_api.create_pull_request.assert_called_once()
 

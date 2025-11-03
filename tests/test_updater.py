@@ -266,3 +266,165 @@ class TestRHDHPluginConfigUpdater:
         assert "previous__1.0.0" not in updated_content
         assert "next__0.1.2" in updated_content
         assert "stable__0.2.0" in updated_content
+
+    def test_build_version_string_with_single_version(self) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        version = Version("1.42.5")
+
+        result = updater._build_version_string(version)
+
+        assert result == "1.42.5"
+
+    def test_build_version_string_with_dual_version(self) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        version = Version("1.42.5")
+        second_version = Version("0.1.0")
+
+        result = updater._build_version_string(version, second_version)
+
+        assert result == "1.42.5__0.1.0"
+
+    def test_build_version_string_with_none_second_version(self) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        version = Version("1.42.5")
+
+        result = updater._build_version_string(version, None)
+
+        assert result == "1.42.5"
+
+    def test_update_plugin_version_with_dual_version(
+        self, sample_yaml_content_with_dual_versions: "str"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/dual-version-plugin",
+            current_version=Version("1.42.5"),
+            plugin_name="dual-version-plugin",
+            disabled=False,
+            current_second_version=Version("0.1.0"),
+        )
+        new_version = Version("1.43.0")
+        new_second_version = Version("0.2.0")
+
+        updated_content = updater._update_plugin_version_in_content(
+            sample_yaml_content_with_dual_versions,
+            plugin,
+            new_version,
+            new_second_version,
+        )
+
+        assert "next__1.43.0__0.2.0" in updated_content
+        assert "next__1.42.5__0.1.0" not in updated_content
+
+    def test_update_plugin_version_from_dual_to_single(
+        self, sample_yaml_content_with_dual_versions: "str"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/dual-version-plugin",
+            current_version=Version("1.42.5"),
+            plugin_name="dual-version-plugin",
+            disabled=False,
+            current_second_version=Version("0.1.0"),
+        )
+        new_version = Version("2.0.0")
+        # no second version in new version
+
+        updated_content = updater._update_plugin_version_in_content(
+            sample_yaml_content_with_dual_versions, plugin, new_version
+        )
+
+        assert "next__2.0.0" in updated_content
+        assert "next__1.42.5__0.1.0" not in updated_content
+
+    def test_update_plugin_version_from_single_to_dual(
+        self, sample_yaml_content: "str", sample_plugin: "RHDHPlugin"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        new_version = Version("0.2.0")
+        new_second_version = Version("1.0.0")
+
+        updated_content = updater._update_plugin_version_in_content(
+            sample_yaml_content, sample_plugin, new_version, new_second_version
+        )
+
+        assert "next__0.2.0__1.0.0" in updated_content
+        assert "next__0.1.2" not in updated_content
+
+    def test_find_current_tag_prefix_with_dual_version(
+        self, sample_yaml_content_with_dual_versions: "str"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/dual-version-plugin",
+            current_version=Version("1.42.5"),
+            plugin_name="dual-version-plugin",
+            disabled=False,
+            current_second_version=Version("0.1.0"),
+        )
+
+        result = updater._find_current_tag_prefix(
+            sample_yaml_content_with_dual_versions, plugin
+        )
+
+        assert result == "next__"
+
+    def test_bulk_update_with_dual_versions(
+        self, temp_yaml_file_with_dual_versions: "Any"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater(config_path=temp_yaml_file_with_dual_versions)
+
+        plugin1 = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/dual-version-plugin",
+            current_version=Version("1.42.5"),
+            plugin_name="dual-version-plugin",
+            disabled=False,
+            current_second_version=Version("0.1.0"),
+        )
+        plugin2 = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend",
+            current_version=Version("0.1.2"),
+            plugin_name="backstage-plugin-mcp-actions-backend",
+            disabled=False,
+        )
+
+        updates = [
+            RHDHPluginUpdate(
+                rhdh_plugin=plugin1,
+                new_version=Version("1.43.0"),
+                new_second_version=Version("0.2.0"),
+            ),
+            RHDHPluginUpdate(
+                rhdh_plugin=plugin2,
+                new_version=Version("0.2.0"),
+                new_second_version=Version("1.0.0"),
+            ),
+        ]
+
+        updated_content = updater.bulk_update_rhdh_plugins(updates)
+
+        assert "next__1.43.0__0.2.0" in updated_content
+        assert "next__0.2.0__1.0.0" in updated_content
+        assert "next__1.42.5__0.1.0" not in updated_content
+        assert "next__0.1.2" not in updated_content
+
+    def test_update_rhdh_plugin_with_dual_version(
+        self, temp_yaml_file_with_dual_versions: "Any"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater(config_path=temp_yaml_file_with_dual_versions)
+        plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/dual-version-plugin",
+            current_version=Version("1.42.5"),
+            plugin_name="dual-version-plugin",
+            disabled=False,
+            current_second_version=Version("0.1.0"),
+        )
+        new_version = Version("1.43.0")
+        new_second_version = Version("0.2.0")
+
+        updated_content = updater.update_rhdh_plugin(
+            plugin, new_version, new_second_version
+        )
+
+        assert "next__1.43.0__0.2.0" in updated_content
+        assert "next__1.42.5__0.1.0" not in updated_content
