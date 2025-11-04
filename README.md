@@ -1,6 +1,7 @@
 # RHDH Plugin GitOps Updater
 
 [![Tests](https://github.com/thepetk/rhdh-plugin-gitops-updater/actions/workflows/ci.yaml/badge.svg)](https://github.com/thepetk/rhdh-plugin-gitops-updater/actions/workflows/ci.yaml)
+[![Latest Release](https://img.shields.io/github/v/release/thepetk/rhdh-plugin-gitops-updater)](https://github.com/thepetk/rhdh-plugin-gitops-updater/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
