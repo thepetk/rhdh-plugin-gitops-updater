@@ -169,6 +169,23 @@ global:
 
 The action uses tag prefixes to filter which plugin versions to consider for updates. By default, it looks for tags with the `next__` prefix (e.g., `next__1.0.0`). You can customize this behavior using the `tag-prefixes` input to match your versioning scheme.
 
+### Dual Version Support
+
+The action supports **dual versions** to track two separate version components in a single tag. This is useful when you need to track both the RHDH plugin version and the underlying Backstage core version, for example.
+
+#### Format
+
+Nested versions use double underscores (`__`) to separate the primary and secondary version components:
+
+```
+{prefix}__{primary_version}__{secondary_version}
+```
+
+**Examples:**
+
+- `next__1.42.5__0.1.0` - primary version: `1.42.5`, secondary version: `0.1.0`
+- `stable__2.10.15__1.5.3` - primary version: `2.10.15`, secondary version: `1.5.3`
+
 ## Permissions
 
 The action requires the following permissions:
