@@ -6,7 +6,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
 > [!IMPORTANT]
-> This is a personal **Proof of Concept (PoC)** GitHub Action. Use at your own risk in production environments.
+> This is a **Proof of Concept (PoC)** GitHub Action. Use at your own risk in production environments.
 
 A GitHub Action that monitors and updates RHDH plugins in your RHDH GitOps repository. This action checks for new plugin versions and creates pull requests to keep your RHDH installation up to date.
 
