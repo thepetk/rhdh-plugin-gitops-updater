@@ -273,6 +273,96 @@ class TestConvertToRHDHPluginPackage:
 
         assert len(result.versions) == 0
 
+    def test_convert_with_tag_prefix_filter(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        package_name = "test-package"
+        raw_versions = [
+            {
+                "name": "12345",
+                "metadata": {"container": {"tags": ["next__1.0.0"]}},
+                "created_at": "2024-01-15T10:00:00Z",
+            },
+            {
+                "name": "12346",
+                "metadata": {"container": {"tags": ["next__1.1.0"]}},
+                "created_at": "2024-01-16T10:00:00Z",
+            },
+            {
+                "name": "12347",
+                "metadata": {"container": {"tags": ["stable__2.0.0"]}},
+                "created_at": "2024-01-17T10:00:00Z",
+            },
+        ]
+
+        result = github_client._convert_to_rhdh_plugin_package(
+            package_name, raw_versions, tag_prefix_filter="next__"
+        )
+
+        assert len(result.versions) == 2
+        assert result.versions[0].version == Version("1.0.0")
+        assert result.versions[1].version == Version("1.1.0")
+
+    @patch(
+        "src.github_api_client.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+        ["next__", "stable__", "previous__"],
+    )
+    def test_convert_with_tag_prefix_filter_excludes_other_prefixes(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        package_name = "test-package"
+        raw_versions = [
+            {
+                "name": "12345",
+                "metadata": {"container": {"tags": ["next__1.0.0"]}},
+                "created_at": "2024-01-15T10:00:00Z",
+            },
+            {
+                "name": "12346",
+                "metadata": {"container": {"tags": ["previous__1.0.0"]}},
+                "created_at": "2024-01-16T10:00:00Z",
+            },
+            {
+                "name": "12347",
+                "metadata": {"container": {"tags": ["stable__1.0.0"]}},
+                "created_at": "2024-01-17T10:00:00Z",
+            },
+        ]
+
+        result = github_client._convert_to_rhdh_plugin_package(
+            package_name, raw_versions, tag_prefix_filter="stable__"
+        )
+
+        assert len(result.versions) == 1
+        assert result.versions[0].version == Version("1.0.0")
+
+    @patch(
+        "src.github_api_client.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+        ["next__", "stable__"],
+    )
+    def test_convert_without_tag_prefix_filter_includes_all_valid(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        package_name = "test-package"
+        raw_versions = [
+            {
+                "name": "12345",
+                "metadata": {"container": {"tags": ["next__1.0.0"]}},
+                "created_at": "2024-01-15T10:00:00Z",
+            },
+            {
+                "name": "12346",
+                "metadata": {"container": {"tags": ["stable__2.0.0"]}},
+                "created_at": "2024-01-16T10:00:00Z",
+            },
+        ]
+
+        result = github_client._convert_to_rhdh_plugin_package(
+            package_name, raw_versions, tag_prefix_filter=None
+        )
+
+        assert len(result.versions) == 2
+
 
 class TestFetchPackage:
     """
@@ -315,6 +405,30 @@ class TestFetchPackage:
         call_args = github_client._paginate.call_args
         url = call_args[1]["url"]
         assert "org%2Fpackage-name" in url
+
+    def test_fetch_package_with_tag_prefix_filter(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        raw_versions = [
+            {
+                "name": "12345",
+                "metadata": {"container": {"tags": ["next__1.0.0"]}},
+                "created_at": "2024-01-15T10:00:00Z",
+            },
+            {
+                "name": "12346",
+                "metadata": {"container": {"tags": ["stable__2.0.0"]}},
+                "created_at": "2024-01-16T10:00:00Z",
+            },
+        ]
+        github_client._paginate = Mock(return_value=raw_versions)
+
+        package_name = "test-package"
+        result = github_client.fetch_package(package_name, tag_prefix_filter="next__")
+
+        assert result.name == package_name
+        assert len(result.versions) == 1
+        assert result.versions[0].version == Version("1.0.0")
 
 
 class TestBranchExists:
@@ -588,6 +702,96 @@ class TestCreatePullRequest:
             base_branch="main",
         )
 
-        # check that update_file was called with newline added
         call_args = mock_repo.update_file.call_args
         assert call_args[1]["content"] == "new content\n"
+
+    def test_create_pr_deletes_branch_on_failure(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        mock_repo = Mock()
+        mock_base_ref = Mock()
+        mock_base_ref.object.sha = "base_sha_123"
+
+        mock_branch_ref = Mock()
+
+        def get_git_ref_side_effect(ref_name):
+            if ref_name == "heads/main":
+                return mock_base_ref
+            elif ref_name == "heads/update-plugin":
+                if get_git_ref_side_effect.call_count == 0:
+                    get_git_ref_side_effect.call_count += 1
+                    raise Exception("Branch not found")
+                else:
+                    return mock_branch_ref
+            return Mock()
+
+        get_git_ref_side_effect.call_count = 0
+        mock_repo.get_git_ref.side_effect = get_git_ref_side_effect
+        mock_repo.create_git_ref.return_value = Mock()
+
+        mock_contents = Mock(spec=ContentFile)
+        mock_contents.decoded_content = b"old content\n"
+        mock_contents.sha = "file_sha_123"
+        mock_repo.get_contents.return_value = mock_contents
+        mock_repo.update_file.return_value = Mock()
+        mock_repo.create_pull.side_effect = Exception("PR creation failed")
+
+        github_client.client.get_repo = Mock(return_value=mock_repo)
+
+        with pytest.raises(GithubPRFailedException) as exc_info:
+            github_client.create_pull_request(
+                repo_full_name="owner/repo",
+                file_path="config.yaml",
+                new_content="new content",
+                branch_name="update-plugin",
+                pr_title="Update plugin",
+                pr_body="Update plugin to version 1.0.0",
+                base_branch="main",
+            )
+
+        assert "Failed to create PR" in str(exc_info.value)
+        mock_branch_ref.delete.assert_called_once()
+
+    def test_create_pr_handles_branch_deletion_failure(
+        self, github_client: "GithubAPIClient"
+    ) -> "None":
+        mock_repo = Mock()
+        mock_base_ref = Mock()
+        mock_base_ref.object.sha = "base_sha_123"
+
+        def get_git_ref_side_effect(ref_name):
+            if ref_name == "heads/main":
+                return mock_base_ref
+            elif ref_name == "heads/update-plugin":
+                if get_git_ref_side_effect.call_count == 0:
+                    get_git_ref_side_effect.call_count += 1
+                    raise Exception("Branch not found")
+                else:
+                    raise Exception("Cannot get branch for deletion")
+            return Mock()
+
+        get_git_ref_side_effect.call_count = 0
+        mock_repo.get_git_ref.side_effect = get_git_ref_side_effect
+        mock_repo.create_git_ref.return_value = Mock()
+
+        mock_contents = Mock(spec=ContentFile)
+        mock_contents.decoded_content = b"old content\n"
+        mock_contents.sha = "file_sha_123"
+        mock_repo.get_contents.return_value = mock_contents
+        mock_repo.update_file.return_value = Mock()
+        mock_repo.create_pull.side_effect = Exception("PR creation failed")
+
+        github_client.client.get_repo = Mock(return_value=mock_repo)
+
+        with pytest.raises(GithubPRFailedException) as exc_info:
+            github_client.create_pull_request(
+                repo_full_name="owner/repo",
+                file_path="config.yaml",
+                new_content="new content",
+                branch_name="update-plugin",
+                pr_title="Update plugin",
+                pr_body="Update plugin to version 1.0.0",
+                base_branch="main",
+            )
+
+        assert "Failed to create PR" in str(exc_info.value)

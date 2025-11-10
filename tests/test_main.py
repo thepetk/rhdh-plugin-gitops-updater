@@ -85,7 +85,9 @@ class TestMain:
         main()
 
         mock_loader.load_rhdh_plugins.assert_called_once()
-        mock_api.fetch_package.assert_called_once_with("test-package")
+        mock_api.fetch_package.assert_called_once_with(
+            "test-package", tag_prefix_filter=None
+        )
         # no pr should be created
         mock_api.create_pull_request.assert_not_called()
 
@@ -144,7 +146,9 @@ class TestMain:
         main()
 
         mock_loader.load_rhdh_plugins.assert_called_once()
-        mock_api.fetch_package.assert_called_once_with("test-package")
+        mock_api.fetch_package.assert_called_once_with(
+            "test-package", tag_prefix_filter=None
+        )
         mock_updater.update_rhdh_plugin.assert_called_once_with(
             mock_plugin, Version("1.1.0"), None
         )
@@ -180,7 +184,9 @@ class TestMain:
 
         mock_api = Mock()
 
-        def fetch_package_side_effect(package_name: "str") -> "RHDHPluginPackage":
+        def fetch_package_side_effect(
+            package_name: "str", tag_prefix_filter: "str | None" = None
+        ) -> "RHDHPluginPackage":
             if package_name == "test-package-1":
                 return RHDHPluginPackage(
                     name="test-package-1",
@@ -260,7 +266,9 @@ class TestMain:
 
         mock_api = Mock()
 
-        def fetch_package_side_effect(package_name: "str") -> "RHDHPluginPackage":
+        def fetch_package_side_effect(
+            package_name: "str", tag_prefix_filter: "str | None" = None
+        ) -> "RHDHPluginPackage":
             if package_name == "test-package-1":
                 return RHDHPluginPackage(
                     name="test-package-1",
@@ -434,3 +442,158 @@ class TestMain:
         # no updates should be attempted
         mock_updater.update_rhdh_plugin.assert_not_called()
         mock_api.create_pull_request.assert_not_called()
+
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
+    @patch("main.GITHUB_TOKEN", "test_token")
+    @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
+    @patch("main.PR_CREATION_LIMIT", 0)
+    @patch("main.GithubAPIClient")
+    @patch("main.RHDHPluginsConfigLoader")
+    @patch("main.RHDHPluginConfigUpdater")
+    def test_main_filters_by_current_tag_prefix(
+        self, mock_updater_class: "Any", mock_loader_class: "Any", mock_api_class: "Any"
+    ) -> "None":
+        """Test that plugins are fetched with their specific tag prefix filter"""
+        mock_plugin = RHDHPlugin(
+            package_name="test-package",
+            current_version=Version("1.0.0"),
+            plugin_name="test-plugin",
+            disabled=False,
+            current_tag_prefix="next__",
+        )
+
+        mock_loader = Mock()
+        mock_loader.load_rhdh_plugins.return_value = [mock_plugin]
+        mock_loader_class.return_value = mock_loader
+
+        mock_api = Mock()
+        # Package has both next__ and stable__ versions, but should only return next__
+        mock_package = RHDHPluginPackage(
+            name="test-package",
+            versions=[
+                RHDHPluginPackageVersion(
+                    name="12345",
+                    version=Version("1.0.0"),
+                    created_at="2024-01-15T10:00:00Z",
+                )
+            ],
+        )
+        mock_api.fetch_package.return_value = mock_package
+        mock_api_class.return_value = mock_api
+
+        main()
+
+        mock_loader.load_rhdh_plugins.assert_called_once()
+        # Verify fetch_package was called with the tag_prefix_filter
+        mock_api.fetch_package.assert_called_once_with(
+            "test-package", tag_prefix_filter="next__"
+        )
+
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
+    @patch("main.GITHUB_TOKEN", "test_token")
+    @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
+    @patch("main.PR_CREATION_LIMIT", 0)
+    @patch("main.GithubAPIClient")
+    @patch("main.RHDHPluginsConfigLoader")
+    @patch("main.RHDHPluginConfigUpdater")
+    def test_main_prevents_cross_prefix_comparison(
+        self, mock_updater_class: "Any", mock_loader_class: "Any", mock_api_class: "Any"
+    ) -> "None":
+        mock_plugin = RHDHPlugin(
+            package_name="test-package",
+            current_version=Version("1.0.0"),
+            plugin_name="test-plugin",
+            disabled=False,
+            current_tag_prefix="next__",
+        )
+
+        mock_loader = Mock()
+        mock_loader.load_rhdh_plugins.return_value = [mock_plugin]
+        mock_loader_class.return_value = mock_loader
+
+        mock_api = Mock()
+        mock_package = RHDHPluginPackage(
+            name="test-package",
+            versions=[
+                RHDHPluginPackageVersion(
+                    name="12345",
+                    version=Version("1.0.0"),  # current version
+                    created_at="2024-01-15T10:00:00Z",
+                )
+            ],
+        )
+        mock_api.fetch_package.return_value = mock_package
+        mock_api_class.return_value = mock_api
+
+        main()
+
+        mock_api.create_pull_request.assert_not_called()
+
+    @patch("main.GITHUB_REPOSITORY", "owner/repo")
+    @patch("main.GITHUB_TOKEN", "test_token")
+    @patch("main.UPDATE_PR_STRATEGY", GithubPullRequestStrategy.SEPARATE)
+    @patch("main.PR_CREATION_LIMIT", 0)
+    @patch("main.GithubAPIClient")
+    @patch("main.RHDHPluginsConfigLoader")
+    @patch("main.RHDHPluginConfigUpdater")
+    def test_main_uses_different_prefixes_for_different_plugins(
+        self, mock_updater_class: "Any", mock_loader_class: "Any", mock_api_class: "Any"
+    ) -> "None":
+        mock_plugin1 = RHDHPlugin(
+            package_name="test-package-1",
+            current_version=Version("1.0.0"),
+            plugin_name="test-plugin-1",
+            disabled=False,
+            current_tag_prefix="next__",
+        )
+        mock_plugin2 = RHDHPlugin(
+            package_name="test-package-2",
+            current_version=Version("2.0.0"),
+            plugin_name="test-plugin-2",
+            disabled=False,
+            current_tag_prefix="stable__",
+        )
+
+        mock_loader = Mock()
+        mock_loader.load_rhdh_plugins.return_value = [mock_plugin1, mock_plugin2]
+        mock_loader_class.return_value = mock_loader
+
+        mock_api = Mock()
+
+        def fetch_package_side_effect(
+            package_name: "str", tag_prefix_filter: "str | None" = None
+        ) -> "RHDHPluginPackage":
+            if package_name == "test-package-1":
+                return RHDHPluginPackage(
+                    name="test-package-1",
+                    versions=[
+                        RHDHPluginPackageVersion(
+                            name="12345",
+                            version=Version("1.0.0"),
+                            created_at="2024-01-15T10:00:00Z",
+                        )
+                    ],
+                )
+            return RHDHPluginPackage(
+                name="test-package-2",
+                versions=[
+                    RHDHPluginPackageVersion(
+                        name="22345",
+                        version=Version("2.0.0"),
+                        created_at="2024-01-15T10:00:00Z",
+                    )
+                ],
+            )
+
+        mock_api.fetch_package.side_effect = fetch_package_side_effect
+        mock_api_class.return_value = mock_api
+
+        main()
+
+        assert mock_api.fetch_package.call_count == 2
+        mock_api.fetch_package.assert_any_call(
+            "test-package-1", tag_prefix_filter="next__"
+        )
+        mock_api.fetch_package.assert_any_call(
+            "test-package-2", tag_prefix_filter="stable__"
+        )

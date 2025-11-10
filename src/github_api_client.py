@@ -82,7 +82,10 @@ class GithubAPIClient:
         return items
 
     def _convert_to_rhdh_plugin_package(
-        self, package_name: "str", raw_versions: "list[dict[str, Any]]"
+        self,
+        package_name: "str",
+        raw_versions: "list[dict[str, Any]]",
+        tag_prefix_filter: "str | None" = None,
     ) -> "RHDHPluginPackage":
         """
         converts a list of package versions into an RHDHPluginPackage
@@ -104,6 +107,13 @@ class GithubAPIClient:
             tag = str(tags[0])
             matched_prefix = match_tag_prefix(tag)
             if not matched_prefix:
+                continue
+
+            if tag_prefix_filter and matched_prefix != tag_prefix_filter:
+                logger.debug(
+                    f"skipping version {tag} for package {package_name} "
+                    f"(prefix {matched_prefix} != {tag_prefix_filter})"
+                )
                 continue
 
             created_at = v.get("created_at")
@@ -130,6 +140,7 @@ class GithubAPIClient:
         self,
         package_name: "str",
         org=RHDHPluginUpdaterConfig.GH_ORG_NAME,
+        tag_prefix_filter: "str | None" = None,
     ) -> "RHDHPluginPackage":
         """
         fetch the RHDHPluginPackage for the given package name
@@ -148,7 +159,9 @@ class GithubAPIClient:
             logger.warning(f"no versions found for package {package_name}")
             return RHDHPluginPackage(name=package_name, versions=[])
 
-        return self._convert_to_rhdh_plugin_package(package_name, raw_versions)
+        return self._convert_to_rhdh_plugin_package(
+            package_name, raw_versions, tag_prefix_filter
+        )
 
     def _branch_exists(self, repo: "Repository", branch_name: "str") -> "bool":
         """
@@ -257,6 +270,16 @@ class GithubAPIClient:
             )
             return pr.html_url
         except Exception as pr_error:
+            try:
+                logger.warning(
+                    f"PR creation failed, attempting to delete branch {branch_name}"
+                )
+                ref = repo.get_git_ref(f"heads/{branch_name}")
+                ref.delete()
+                logger.debug(f"deleted branch {branch_name} after PR creation failure")
+            except Exception as cleanup_error:
+                logger.error(f"failed to cleanup branch {branch_name}: {cleanup_error}")
+
             raise GithubPRFailedException(
                 f"Failed to create PR: {pr_error}"
             ) from pr_error

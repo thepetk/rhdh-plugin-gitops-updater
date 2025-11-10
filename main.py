@@ -48,7 +48,9 @@ def main():
     for plugin in rhdh_plugins:
         logger.info(f"Processing plugin: {plugin.plugin_name}")
 
-        package = gh_api_client.fetch_package(plugin.package_name)
+        package = gh_api_client.fetch_package(
+            plugin.package_name, tag_prefix_filter=plugin.current_tag_prefix
+        )
         if not package.versions:
             logger.warning(
                 f"no versions found for package {plugin.package_name}, skipping..."
