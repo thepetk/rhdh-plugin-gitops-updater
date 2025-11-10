@@ -102,6 +102,7 @@ class RHDHPluginsConfigLoader:
             "version": version,
             "second_version": second_version,
             "plugin_name": plugin_name,
+            "tag_prefix": matched_prefix,
         }
 
     def _convert_rhdhplugin_list(
@@ -140,6 +141,7 @@ class RHDHPluginsConfigLoader:
                     plugin_name=str(parsed["plugin_name"]),
                     disabled=disabled,
                     current_second_version=parsed.get("second_version"),  # type: ignore
+                    current_tag_prefix=str(parsed.get("tag_prefix", "")),
                 )
             )
         return rhdh_plugins

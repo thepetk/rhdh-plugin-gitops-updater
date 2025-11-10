@@ -39,6 +39,7 @@ class RHDHPlugin:
     plugin_name: "str"
     disabled: "bool"
     current_second_version: "Version | None" = None
+    current_tag_prefix: "str | None" = None
 
 
 @dataclass
