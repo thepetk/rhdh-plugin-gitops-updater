@@ -65,18 +65,31 @@ class TestRHDHPluginsConfigLoader:
 
         assert "Invalid RHDH plugin package definition" in str(exc_info.value)
 
-    def test_parse_package_string_invalid_no_exclamation(self) -> "None":
+    def test_parse_package_string_without_exclamation(self) -> "None":
         loader = RHDHPluginsConfigLoader()
-        package = "oci://ghcr.io/redhat-developer/plugin:next__1.0.0"
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:next__1.0.0"
 
-        with pytest.raises(InvalidRHDHPluginPackageDefinitionException) as exc_info:
-            loader._parse_package_string(package)
+        result = loader._parse_package_string(package)
 
-        assert "Missing !" in str(exc_info.value)
+        assert (
+            result["package_name"]
+            == "rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend"
+        )
+        assert result["version"] == Version("1.0.0")
+        assert result["plugin_name"] == "backstage-plugin-mcp-actions-backend"
 
     def test_parse_package_string_invalid_no_colon(self) -> "None":
         loader = RHDHPluginsConfigLoader()
         package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin!plugin-name"
+
+        with pytest.raises(InvalidRHDHPluginPackageDefinitionException) as exc_info:
+            loader._parse_package_string(package)
+
+        assert "Tag not found" in str(exc_info.value)
+
+    def test_parse_package_string_invalid_no_colon_without_exclamation(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin"
 
         with pytest.raises(InvalidRHDHPluginPackageDefinitionException) as exc_info:
             loader._parse_package_string(package)
@@ -309,6 +322,40 @@ class TestRHDHPluginsConfigLoader:
         assert result[0].current_version == Version("1.42.5")
         assert result[0].current_second_version == Version("0.1.0")
         # second plugin has single version
+        assert result[1].current_version == Version("2.0.0")
+        assert result[1].current_second_version is None
+
+    def test_parse_package_string_without_exclamation_dual_version(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        package = "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin:next__1.42.5__0.1.0"
+
+        result = loader._parse_package_string(package)
+
+        assert result["package_name"] == "rhdh-plugin-export-overlays/backstage-plugin"
+        assert result["version"] == Version("1.42.5")
+        assert result["second_version"] == Version("0.1.0")
+        assert result["plugin_name"] == "backstage-plugin"
+
+    def test_convert_rhdhplugin_list_without_exclamation(self) -> "None":
+        loader = RHDHPluginsConfigLoader()
+        plugins_list = [
+            {
+                "disabled": False,
+                "package": "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin1:next__1.42.5__0.1.0",
+            },
+            {
+                "disabled": False,
+                "package": "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/plugin2:next__2.0.0",
+            },
+        ]
+
+        result = loader._convert_rhdhplugin_list(plugins_list)
+
+        assert len(result) == 2
+        assert result[0].plugin_name == "plugin1"
+        assert result[0].current_version == Version("1.42.5")
+        assert result[0].current_second_version == Version("0.1.0")
+        assert result[1].plugin_name == "plugin2"
         assert result[1].current_version == Version("2.0.0")
         assert result[1].current_second_version is None
 

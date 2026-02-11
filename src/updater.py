@@ -45,7 +45,7 @@ class RHDHPluginConfigUpdater:
         for prefix in RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX:
             test_tag = f"{prefix}{version_string}"
             pattern = re.compile(
-                rf"package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:{re.escape(test_tag)}![^\s]*",
+                rf"package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:{re.escape(test_tag)}(?:![^\s]*)?",
                 re.MULTILINE,
             )
             if pattern.search(content):
@@ -81,7 +81,7 @@ class RHDHPluginConfigUpdater:
 
         # pattern to find the specific plugin's package line with the old version
         pattern = re.compile(
-            rf"(package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:){re.escape(old_tag)}(![^\s]*)",
+            rf"(package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:){re.escape(old_tag)}((?:![^\s]*)?)",
             re.MULTILINE,
         )
 

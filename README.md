@@ -161,10 +161,12 @@ global:
   dynamic:
     plugins:
       - disabled: false
-        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-name:next__1.0.0!backstage-plugin-name
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-name:next__1.0.0
       - disabled: false
-        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/another-plugin:next__2.0.0!another-plugin
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/another-plugin:next__2.0.0
 ```
+
+> **Note:** The legacy format with `!plugin-name` suffix (e.g., `...:next__1.0.0!backstage-plugin-name`) is also supported for backward compatibility.
 
 ### Tag Prefixes
 
