@@ -428,3 +428,64 @@ class TestRHDHPluginConfigUpdater:
 
         assert "next__1.43.0__0.2.0" in updated_content
         assert "next__1.42.5__0.1.0" not in updated_content
+
+    def test_update_plugin_version_without_exclamation(
+        self,
+        sample_yaml_content_without_exclamation: "str",
+        sample_plugin: "RHDHPlugin",
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        new_version = Version("0.1.3")
+
+        updated_content = updater._update_plugin_version_in_content(
+            sample_yaml_content_without_exclamation, sample_plugin, new_version
+        )
+
+        assert "next__0.1.3" in updated_content
+        assert "next__0.1.2" not in updated_content
+        assert updated_content != sample_yaml_content_without_exclamation
+
+    def test_find_current_tag_prefix_without_exclamation(
+        self,
+        sample_yaml_content_without_exclamation: "str",
+        sample_plugin: "RHDHPlugin",
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater()
+
+        result = updater._find_current_tag_prefix(
+            sample_yaml_content_without_exclamation, sample_plugin
+        )
+
+        assert result == "next__"
+
+    def test_bulk_update_without_exclamation(
+        self, temp_yaml_file_without_exclamation: "Any"
+    ) -> "None":
+        updater = RHDHPluginConfigUpdater(
+            config_path=temp_yaml_file_without_exclamation
+        )
+
+        plugin1 = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend",
+            current_version=Version("0.1.2"),
+            plugin_name="backstage-plugin-mcp-actions-backend",
+            disabled=False,
+        )
+        plugin2 = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool",
+            current_version=Version("0.2.0"),
+            plugin_name="red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool",
+            disabled=False,
+        )
+
+        updates = [
+            RHDHPluginUpdate(rhdh_plugin=plugin1, new_version=Version("0.1.3")),
+            RHDHPluginUpdate(rhdh_plugin=plugin2, new_version=Version("0.2.1")),
+        ]
+
+        updated_content = updater.bulk_update_rhdh_plugins(updates)
+
+        assert "next__0.1.3" in updated_content
+        assert "next__0.2.1" in updated_content
+        assert "next__0.1.2" not in updated_content
+        assert "next__0.2.0" not in updated_content

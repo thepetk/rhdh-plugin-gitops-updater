@@ -255,6 +255,44 @@ def sample_plugin_with_previous_prefix() -> "RHDHPlugin":
 
 
 @pytest.fixture
+def sample_yaml_content_without_exclamation() -> "str":
+    """
+    creates a sample YAML content with plugins using the new format (no ! suffix).
+    """
+    return """global:
+  dynamic:
+    plugins:
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:next__0.1.2
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool:next__0.2.0
+"""
+
+
+@pytest.fixture
+def temp_yaml_file_without_exclamation() -> "Any":
+    """
+    creates a temporary YAML file with plugins using the new format (no ! suffix).
+    """
+    content = """global:
+  dynamic:
+    plugins:
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:next__0.1.2
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool:next__0.2.0
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    yield temp_path
+
+    # clean temp files
+    Path(temp_path).unlink()
+
+
+@pytest.fixture
 def sample_yaml_content_with_dual_versions() -> "str":
     """
     creates a sample YAML content with plugins using dual versions.

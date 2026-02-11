@@ -56,13 +56,12 @@ class RHDHPluginsConfigLoader:
         # remove the oci:// prefix
         package = package.replace("oci://", "", 1)
 
-        # split image ref and plugin name
-        if "!" not in package:
-            raise InvalidRHDHPluginPackageDefinitionException(
-                f"Missing ! in package {package} definition"
-            )
-
-        image_ref, plugin_name = package.split("!", 1)
+        # split image ref and plugin name (! suffix is optional)
+        if "!" in package:
+            image_ref, plugin_name = package.split("!", 1)
+        else:
+            image_ref = package
+            plugin_name = None
 
         # parse the image ref
         parsed_url = urlparse(f"//{image_ref}")
@@ -96,6 +95,10 @@ class RHDHPluginsConfigLoader:
         version, second_version = parse_dual_version(version_string)
 
         package_name = f"rhdh-plugin-export-overlays/{name}"
+
+        # if plugin_name was not provided via !, derive from image name
+        if plugin_name is None:
+            plugin_name = name
 
         return {
             "package_name": package_name,
