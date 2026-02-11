@@ -19,7 +19,7 @@ from src.types import (
     RHDHPluginUpdaterConfig,
 )
 from src.updater import RHDHPluginConfigUpdater
-from src.utils import rhdh_plugin_needs_update
+from src.utils import build_version_string, rhdh_plugin_needs_update
 
 
 def main():
@@ -76,9 +76,16 @@ def main():
             )
             continue
 
+        latest_version_string = build_version_string(
+            latest_version, latest_second_version
+        )
+        current_version_string = build_version_string(
+            plugin.current_version, plugin.current_second_version
+        )
+
         logger.info(
             f"newer version found for plugin {plugin.plugin_name}: "
-            f"{latest_version} (current: {plugin.current_version})"
+            f"{latest_version_string} (current: {current_version_string})"
         )
 
         if UPDATE_PR_STRATEGY == GithubPullRequestStrategy.JOINT:
@@ -108,15 +115,17 @@ def main():
                 file_path=trimmed_file_path,
                 new_content=updated_yaml,
                 branch_name=RHDHPluginUpdaterConfig.GH_PR_BRANCH_NAME_BASE.format(
-                    plugin_name=plugin.plugin_name, latest_version=latest_version
+                    plugin_name=plugin.plugin_name,
+                    latest_version=latest_version_string,
                 ),
                 pr_title=RHDHPluginUpdaterConfig.GH_PR_TITLE_BASE.format(
-                    plugin_name=plugin.plugin_name, latest_version=latest_version
+                    plugin_name=plugin.plugin_name,
+                    latest_version=latest_version_string,
                 ),
                 pr_body=RHDHPluginUpdaterConfig.GH_PR_BODY_BASE.format(
                     plugin_name=plugin.plugin_name,
-                    current_version=plugin.current_version,
-                    latest_version=latest_version,
+                    current_version=current_version_string,
+                    latest_version=latest_version_string,
                 ),
                 base_branch=GITHUB_REF,
             )
@@ -135,10 +144,17 @@ def main():
                 plugin_updates_count=len(plugin_updates)
             )
             for update in plugin_updates:
+                update_current = build_version_string(
+                    update.rhdh_plugin.current_version,
+                    update.rhdh_plugin.current_second_version,
+                )
+                update_new = build_version_string(
+                    update.new_version, update.new_second_version
+                )
                 pr_body += (
                     f"- **{update.rhdh_plugin.plugin_name}**: "
-                    f"`{update.rhdh_plugin.current_version}` → "
-                    f"`{update.new_version}`\n"
+                    f"`{update_current}` → "
+                    f"`{update_new}`\n"
                 )
 
             pr_body += (

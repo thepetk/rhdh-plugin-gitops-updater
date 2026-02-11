@@ -89,6 +89,17 @@ def rhdh_plugin_needs_update(
     )
 
 
+def build_version_string(
+    version: "Version", second_version: "Version | None" = None
+) -> "str":
+    """
+    builds a version string, including second version if present
+    """
+    if second_version:
+        return f"{version}__{second_version}"
+    return str(version)
+
+
 def match_tag_prefix(tag: "str") -> "str | None":
     """
     checks if a tag starts with any of the configured prefixes

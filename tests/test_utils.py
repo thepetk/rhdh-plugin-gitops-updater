@@ -4,6 +4,7 @@ import pytest
 from packaging.version import Version
 
 from src.utils import (
+    build_version_string,
     compare_versions,
     get_plugins_list_from_dict,
     parse_dual_version,
@@ -277,3 +278,21 @@ class TestRHDHPluginNeedsUpdateWithDualVersions:
             )
             is True
         )
+
+
+class TestBuildVersionString:
+    """
+    handles all tests for build_version_string function.
+    """
+
+    def test_single_version(self) -> "None":
+        result = build_version_string(Version("1.0.0"))
+        assert result == "1.0.0"
+
+    def test_dual_version(self) -> "None":
+        result = build_version_string(Version("1.45.3"), Version("0.1.0"))
+        assert result == "1.45.3__0.1.0"
+
+    def test_none_second_version(self) -> "None":
+        result = build_version_string(Version("1.0.0"), None)
+        assert result == "1.0.0"

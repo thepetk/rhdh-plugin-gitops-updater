@@ -8,6 +8,7 @@ from src.constants import (
     logger,
 )
 from src.types import RHDHPlugin, RHDHPluginUpdate, RHDHPluginUpdaterConfig
+from src.utils import build_version_string
 
 
 class RHDHPluginConfigUpdater:
@@ -29,9 +30,7 @@ class RHDHPluginConfigUpdater:
         """
         builds a version string, including second version if present
         """
-        if second_version:
-            return f"{version}__{second_version}"
-        return str(version)
+        return build_version_string(version, second_version)
 
     def _find_current_tag_prefix(self, content: "str", plugin: "RHDHPlugin") -> "str":
         """
@@ -45,7 +44,7 @@ class RHDHPluginConfigUpdater:
         for prefix in RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX:
             test_tag = f"{prefix}{version_string}"
             pattern = re.compile(
-                rf"package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:{re.escape(test_tag)}(?:![^\s]*)?",
+                rf"package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}:{re.escape(test_tag)}(?:![^\s]*)?",
                 re.MULTILINE,
             )
             if pattern.search(content):
@@ -79,9 +78,9 @@ class RHDHPluginConfigUpdater:
         old_tag = f"{current_prefix}{old_version_string}"
         new_tag = f"{current_prefix}{new_version_string}"
 
-        # pattern to find the specific plugin's package line with the old version
+        # Pattern to find the specific plugin's package line with the old version
         pattern = re.compile(
-            rf"(package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}[^\s]*:){re.escape(old_tag)}((?:![^\s]*)?)",
+            rf"(package:\s+(?:oci://)?[^\s]*{re.escape(plugin.plugin_name)}:){re.escape(old_tag)}((?:![^\s]*)?)",
             re.MULTILINE,
         )
 
