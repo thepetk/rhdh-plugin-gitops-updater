@@ -1,4 +1,5 @@
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from packaging.version import Version
@@ -489,3 +490,45 @@ class TestRHDHPluginConfigUpdater:
         assert "next__0.2.1" in updated_content
         assert "next__0.1.2" not in updated_content
         assert "next__0.2.0" not in updated_content
+
+    def test_update_plugin_does_not_match_substring_plugin_name(self) -> "None":
+        updater = RHDHPluginConfigUpdater()
+        # known issue where if one plugin's name is a substring of another, it may
+        # incorrectly match and update the wrong plugin.
+        content = """global:
+  dynamic:
+    plugins:
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed-backend:bs_1.45.3__1.2.3
+      - disabled: false
+        package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed:bs_1.45.3__1.2.3
+"""
+        plugin = RHDHPlugin(
+            package_name="rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed",
+            current_version=Version("1.45.3"),
+            plugin_name="red-hat-developer-hub-backstage-plugin-lightspeed",
+            disabled=False,
+            current_second_version=Version("1.2.3"),
+            current_tag_prefix="bs_",
+        )
+        new_version = Version("1.45.3")
+        new_second_version = Version("1.2.4")
+
+        with patch(
+            "src.types.RHDHPluginUpdaterConfig.GH_PACKAGE_TAG_PREFIX",
+            ["bs_", "next__"],
+        ):
+            updated_content = updater._update_plugin_version_in_content(
+                content, plugin, new_version, new_second_version
+            )
+
+        # lightspeed should be updated
+        assert (
+            "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed:bs_1.45.3__1.2.4"
+            in updated_content
+        )
+        # lightspeed-backend should NOT be updated
+        assert (
+            "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed-backend:bs_1.45.3__1.2.3"
+            in updated_content
+        )
