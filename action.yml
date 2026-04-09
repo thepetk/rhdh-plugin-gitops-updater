@@ -31,6 +31,10 @@ inputs:
     description: 'Tag prefixes to consider when checking for plugin updates (newline-separated list)'
     required: false
     default: 'next__'
+  base-branch:
+    description: 'Base branch for pull requests (overrides the branch the workflow runs on)'
+    required: false
+    default: 'main'
 
 runs:
   using: 'docker'
@@ -43,3 +47,4 @@ runs:
     PR_CREATION_LIMIT: ${{ inputs.pr-creation-limit }}
     VERBOSE: ${{ inputs.verbose }}
     GH_PACKAGE_TAG_PREFIXES: ${{ inputs.tag-prefixes }}
+    BASE_BRANCH: ${{ inputs.base-branch }}
