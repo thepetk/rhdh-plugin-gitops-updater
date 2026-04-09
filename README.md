@@ -140,6 +140,7 @@ Specify custom tag prefixes to filter plugin versions:
 | `update-pr-strategy` | PR creation strategy: `separate` or `joint`                                              | No       | `separate`               |
 | `pr-creation-limit`  | Maximum number of PRs to create (0 for unlimited, only applies with `separate` strategy) | No       | `0`                      |
 | `tag-prefixes`       | Tag prefixes to consider when checking for plugin updates (newline-separated list)       | No       | `next__`                 |
+| `base-branch`        | Base branch for pull requests (overrides the branch the workflow runs on)                | No       | `main`                   |
 | `verbose`            | Enable verbose logging (0 = normal, 1 = debug)                                           | No       | `0`                      |
 
 ## How It Works
